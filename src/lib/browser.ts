@@ -16,9 +16,12 @@
  * HTTPS_PROXY / NO_PROXY are honoured in all three cases for machines that
  * require a proxy.
  */
-import { chromium, type Browser, type LaunchOptions } from "playwright-core";
+import type { Browser, LaunchOptions } from "playwright-core";
 
 export async function launchBrowser(): Promise<Browser> {
+  // Loaded lazily so that a package that fails to load on the host surfaces
+  // as a reported error from the fetch step, not a crash before any code runs.
+  const { chromium } = await import("playwright-core");
   const proxyServer = process.env.HTTPS_PROXY;
   const common: LaunchOptions = {
     headless: true,
