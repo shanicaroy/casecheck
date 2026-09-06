@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { fetchPage } from "../src/steps/fetch.js";
+import { fetchPage } from "../src/steps/fetch";
 
 const fixture = readFileSync(fileURLToPath(new URL("./fixtures/framer-like.html", import.meta.url)));
 

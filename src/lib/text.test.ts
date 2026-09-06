@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanText, wordCount } from "./text.js";
+import { cleanText, wordCount } from "./text";
 
 test("cleanText collapses whitespace and drops empty lines", () => {
   const out = cleanText("  Hello   world \n\n\n  second   line  \n");

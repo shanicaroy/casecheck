@@ -19,8 +19,8 @@
  * returns a near-empty shell. A browser also gives us screenshots later without
  * changing this step's shape.
  */
-import { chromium, type Browser } from "playwright";
-import { cleanText, wordCount } from "../lib/text.js";
+import { cleanText, wordCount } from "../lib/text";
+import { launchBrowser } from "../lib/browser";
 
 export interface FetchOptions {
   /** Give up on navigation after this long. Default 30s. */
@@ -156,20 +156,4 @@ function parseHttpUrl(input: string): URL | null {
   } catch {
     return null;
   }
-}
-
-/**
- * Environment hooks, both optional:
- *  - PLAYWRIGHT_CHROMIUM_EXECUTABLE: use a specific Chromium binary instead of
- *    the one `npx playwright install chromium` downloads.
- *  - HTTPS_PROXY / NO_PROXY: route the browser through a proxy when the
- *    machine requires one (the case in the sandbox this was first built in).
- */
-async function launchBrowser(): Promise<Browser> {
-  const proxyServer = process.env.HTTPS_PROXY;
-  return chromium.launch({
-    headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
-    proxy: proxyServer ? { server: proxyServer, bypass: process.env.NO_PROXY } : undefined,
-  });
 }

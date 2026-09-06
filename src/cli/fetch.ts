@@ -6,7 +6,7 @@
  * Prints the full result as JSON so you can see exactly what later steps will
  * be given. Nothing here is user-facing UI.
  */
-import { fetchPage } from "../steps/fetch.js";
+import { fetchPage } from "../steps/fetch";
 
 const url = process.argv[2];
 if (!url) {

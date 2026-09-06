@@ -43,3 +43,27 @@ Set up by Shanica in the Vercel dashboard (the build session has no Vercel acces
 rather than the bare `uxpective.com`, because the bare domain serves the UXPective site and Vercel
 moves a domain between projects rather than sharing it. The domain currently returns 404: slice one
 has no web page, so Vercel deploys nothing. The page is slice two.
+
+## 2026-09-06 · Slice two: the page
+
+**Thin custom page, built with Next.js in this repo.** Closes the §13 open decision "thin custom
+page vs. no-code wrapper". Reason: the Vercel project already existed, Next.js is what the
+portfolio uses, and the agent steps stay framework-free in `src/` with the page as a wrapper.
+
+**The page runs step 1 only and shows the raw result.** The review is not built, and the page says
+so in a build-status line (`content/copy.ts`). Reason: contract §4 item 4, no silent guessing,
+applies to the build too. Nothing on the page implies a capability that doesn't exist yet.
+
+**Page copy lives in `content/copy.ts`, not in components.** Same principle as rubric/ and
+prompts/: words Shanica may change should not require touching code. The §9 data-handling sentence
+and the §10 limits statement (verbatim) are there.
+
+**On Vercel the browser is `@sparticuz/chromium`, a slim Linux Chromium shipped inside the
+function.** Alternatives considered: a hosted browser service (extra bill, extra secret) or running
+the agent on a separate server (two deployments). Chosen because it keeps one repo, one deploy, no
+cost. Known costs: the first request after a cold start unpacks Chromium (measured ~3s locally),
+and the function is capped at 60s. `src/lib/browser.ts` is the only file that knows which Chromium
+runs where.
+
+**Failure reasons are still shown as raw codes on the page** (`http_error`, `not_html`, …). The
+designed error states of §7, with their wording and next steps, are a later slice and Shanica's copy.

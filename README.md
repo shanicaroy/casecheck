@@ -7,8 +7,10 @@ does and does not do.
 ## Layout
 
 ```
-src/steps/      the six agent steps, one file each (slice one: fetch only)
-src/lib/        small helpers with no product logic (text clean-up)
+app/            the web page (Next.js): one page plus /api/fetch, no review logic
+content/        every word shown on the page, editable without touching components
+src/steps/      the six agent steps, one file each (so far: fetch only)
+src/lib/        small helpers with no product logic (text clean-up, browser launch)
 src/cli/        run a step by hand from the terminal
 rubric/         the UXPective storytelling framework as data, editable without touching code
 prompts/        every model prompt, one per step, editable without touching code
@@ -20,10 +22,18 @@ test/           tests, with local HTML fixtures so no internet is needed
 
 ```
 npm install
-npx playwright install chromium   # once, downloads the headless browser
-npm run fetch -- https://someone.framer.website/case-study-01
+npx playwright install chromium   # once, downloads the headless browser for local use
+npm run dev                       # the page, at http://localhost:3000
+npm run fetch -- https://someone.framer.website/case-study-01   # step 1 from the terminal
 npm test
 ```
 
-`npm run fetch` prints exactly what step 1 hands to step 2: the page title, its visible text with
-duplicate lines removed, and raw facts (status, word count, image count), or a failure reason.
+Both the page and `npm run fetch` show exactly what step 1 hands to step 2: the page title, its
+visible text with duplicate lines removed, and raw facts (status, word count, image count), or a
+failure reason.
+
+## Hosting
+
+Deployed on Vercel at casecheck.uxpective.com. The project's Framework Preset must be **Next.js**.
+No environment variables are needed yet. On Vercel the fetch step uses the slim Chromium bundled by
+`@sparticuz/chromium`; locally it uses Playwright's own download. See `src/lib/browser.ts`.
