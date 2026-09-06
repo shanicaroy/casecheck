@@ -90,3 +90,18 @@ test("reports a closed port as unreachable", async () => {
   if (result.ok) return;
   assert.equal(result.reason, "unreachable");
 });
+
+test("reports a browser that cannot start as browser_unavailable, not a crash", async () => {
+  const saved = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE = "/definitely/not/a/browser";
+  try {
+    const result = await fetchPage(`${base}/case`);
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.reason, "browser_unavailable");
+    assert.ok(result.detail.length > 0);
+  } finally {
+    if (saved === undefined) delete process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+    else process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE = saved;
+  }
+});

@@ -55,7 +55,9 @@ export type FetchFailReason =
   | "unreachable"   // DNS failure, connection refused, browser could not open it
   | "timeout"       // the page did not respond within timeoutMs
   | "http_error"    // server answered with a 4xx/5xx (404, 403 auth wall, 500…)
-  | "not_html";     // server answered, but with something we don't read yet (e.g. a PDF)
+  | "not_html"      // server answered, but with something we don't read yet (e.g. a PDF)
+  | "browser_unavailable" // the headless browser could not start on this machine (a hosting problem, not the portfolio's)
+  | "unexpected";   // something threw that we did not anticipate; detail carries the message
 
 export interface FetchFail {
   ok: false;
@@ -86,7 +88,12 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
   const url = parseHttpUrl(requestedUrl);
   if (!url) return fail("invalid_url", "Only http:// and https:// links can be fetched.");
 
-  const browser = await launchBrowser();
+  let browser;
+  try {
+    browser = await launchBrowser();
+  } catch (err) {
+    return fail("browser_unavailable", errorMessage(err));
+  }
   try {
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
@@ -147,6 +154,12 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
   } finally {
     await browser.close();
   }
+}
+
+/** First line of an error message, capped, so it can sit in a JSON result. */
+export function errorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.split("\n")[0].slice(0, 400);
 }
 
 function parseHttpUrl(input: string): URL | null {

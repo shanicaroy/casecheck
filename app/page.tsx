@@ -28,8 +28,10 @@ export default function Page() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      if (!response.ok) throw new Error(`Server answered ${response.status}.`);
-      setResult((await response.json()) as FetchResult);
+      // The API answers with a FetchResult even on 500, so read the body first.
+      const body = (await response.json().catch(() => null)) as FetchResult | null;
+      if (!body) throw new Error(`Server answered ${response.status} with no detail.`);
+      setResult(body);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

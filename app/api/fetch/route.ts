@@ -6,7 +6,7 @@
  * and is allowed up to 60 seconds, because a cold start unpacks Chromium.
  */
 import { NextResponse } from "next/server";
-import { fetchPage } from "@/src/steps/fetch";
+import { fetchPage, errorMessage, type FetchFail } from "@/src/steps/fetch";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,6 +23,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Body must include a url string." }, { status: 400 });
   }
 
-  const result = await fetchPage(url);
-  return NextResponse.json(result);
+  const started = Date.now();
+  try {
+    const result = await fetchPage(url);
+    return NextResponse.json(result);
+  } catch (err) {
+    // The step itself reports known failures. Anything reaching here is a bug
+    // or a hosting problem, so say what it was instead of a blank 500.
+    const failure: FetchFail = {
+      ok: false,
+      requestedUrl: url,
+      reason: "unexpected",
+      detail: errorMessage(err),
+      durationMs: Date.now() - started,
+    };
+    return NextResponse.json(failure, { status: 500 });
+  }
 }
