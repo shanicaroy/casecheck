@@ -75,3 +75,18 @@ tool asks which one to review. It does not take the first.** Decided by Shanica.
 first and saying so is allowed by §5, but a review of the wrong case study wastes the designer's one
 run and the ask costs one click. Step 2 (Classify) is built to this: it lists the case studies it
 found and stops for a choice. A link that already points at one case study page skips the question.
+
+## 2026-09-06 · First live run of step 1
+
+**Deployed fetch works.** work.shanicaroy.com fetched on Vercel in 4.8s: 226 words, status 200,
+title captured, navigation and hero text visible. Two hosting faults were found and fixed on the
+way, both worth remembering: the Vercel project needed the Next.js framework declared in the repo
+(`vercel.json`), and Vercel's file tracer had left out a file Playwright reads by a runtime-built
+path (`browsers.json`), fixed by listing the whole package in `next.config.mjs`. The `/api/health`
+route was added to diagnose that and stays as a permanent check.
+
+**Learning: `imageCount` undercounts.** The live run reported 0 images for a page that visibly has
+cover artwork. The count only sees `<img>` elements; this portfolio draws its covers as inline SVG,
+and other sites use CSS background images. Step 2 must not treat a low image count as proof of a
+text-only page. Widening the count (SVG, `<picture>`, backgrounds) is a small change for a later
+slice, or screenshots make the question moot once vision arrives in step 4.
