@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <title>Huddle — a case study</title>
+  <style>
+    /* Framer-style breakpoint variants: only one is visible at a time. */
+    .tablet, .mobile { display: none; }
+  </style>
+</head>
+<body>
+  <nav>Home · Work · About</nav>
+  <main>
+    <h1>Huddle</h1>
+    <p class="desktop">A 7-week solo concept app for neighbour loneliness.</p>
+    <p class="tablet">A 7-week solo concept app for neighbour loneliness.</p>
+    <p class="mobile">A 7-week solo concept app for neighbour loneliness.</p>
+
+    <!-- A visible duplicate, to prove de-duplication happens even when CSS doesn't hide it. -->
+    <p>Research is claimed in the role line but never shown.</p>
+    <p>Research is claimed in the role line but never shown.</p>
+
+    <h2>The Proof</h2>
+    <!-- An animated stat counter: starts at 0% and only reaches 65% after 5s. -->
+    <p>Weekly event turnout grew by <span id="counter">0%</span>.</p>
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="hero">
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="flow">
+  </main>
+  <script>
+    setTimeout(() => { document.getElementById("counter").textContent = "65%"; }, 5000);
+  </script>
+</body>
+</html>

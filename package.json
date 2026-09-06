@@ -1,0 +1,20 @@
+{
+  "name": "case-check",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portfolio review agent: finds the weakest part of a UX case study's narrative. See docs/ and the product contract.",
+  "type": "module",
+  "scripts": {
+    "fetch": "tsx src/cli/fetch.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.3"
+  }
+}
