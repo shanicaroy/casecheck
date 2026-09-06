@@ -30,10 +30,11 @@ Reason: contract §8, worked example 1, lesson (3). Framer serves paragraphs onc
 Reason: whether v1 supports PDF input is an open decision (§13). Fetch surfaces the fact; nothing
 else is assumed.
 
-**Built inside the portfolio repo for now, as `case-check/`.**
-Reason: this session only has access to `shanicaroy/shan-ux-portfolio`. The folder is
-self-contained (its own `package.json`) so it can be moved to its own repository under
-uxpective.com unchanged.
+**Lives in its own repository, `shanicaroy/casecheck`.**
+Slice one was first built inside the portfolio repo because the build session could only reach
+that one. It was moved here unchanged the same day, and the copy in the portfolio was removed.
+Reason: a separate product with its own dependencies and its own domain should not share a build
+with the portfolio (the shared build broke the portfolio's Vercel deploy once already).
 
 ## 2026-09-06 · Hosting (pending)
 
