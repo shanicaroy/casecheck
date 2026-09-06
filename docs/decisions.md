@@ -36,12 +36,10 @@ that one. It was moved here unchanged the same day, and the copy in the portfoli
 Reason: a separate product with its own dependencies and its own domain should not share a build
 with the portfolio (the shared build broke the portfolio's Vercel deploy once already).
 
-## 2026-09-06 · Hosting (pending)
+## 2026-09-06 · Hosting
 
-**Case Check will be its own Vercel project, "case-check-agent", on the uxpective.com domain.**
-Not yet done: the build session has no Vercel access (no CLI, token or connector), so the project
-and domain are created in the Vercel dashboard by Shanica. Open question to settle first: apex
-`uxpective.com` currently serves the UXPective site, so Case Check most likely lives on a
-subdomain (e.g. `casecheck.uxpective.com`) or a path. Whichever is chosen, the reason goes here.
-Also note: as of slice one there is no web page to deploy; the pipeline runs from the terminal.
-The page arrives in a later slice.
+**Case Check is its own Vercel project, served at `casecheck.uxpective.com`.**
+Set up by Shanica in the Vercel dashboard (the build session has no Vercel access). A subdomain
+rather than the bare `uxpective.com`, because the bare domain serves the UXPective site and Vercel
+moves a domain between projects rather than sharing it. The domain currently returns 404: slice one
+has no web page, so Vercel deploys nothing. The page is slice two.
