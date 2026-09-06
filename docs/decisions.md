@@ -67,3 +67,11 @@ runs where.
 
 **Failure reasons are still shown as raw codes on the page** (`http_error`, `not_html`, …). The
 designed error states of §7, with their wording and next steps, are a later slice and Shanica's copy.
+
+## 2026-09-06 · Ambiguity at intake (contract §5)
+
+**When the link is a whole portfolio with several case studies and no single one is indicated, the
+tool asks which one to review. It does not take the first.** Decided by Shanica. Reason: taking the
+first and saying so is allowed by §5, but a review of the wrong case study wastes the designer's one
+run and the ask costs one click. Step 2 (Classify) is built to this: it lists the case studies it
+found and stops for a choice. A link that already points at one case study page skips the question.
