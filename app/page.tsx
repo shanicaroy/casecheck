@@ -11,6 +11,7 @@ import type { FetchFail } from "@/src/steps/fetch";
 import type { ClassifyResult } from "@/src/steps/classify";
 import type { PlanResult } from "@/src/steps/plan";
 import type { ChecksResult } from "@/src/steps/checks";
+import type { VerifyResult } from "@/src/steps/verify";
 import type { RunEvent, RunLog, FetchOkPublic, Declined } from "@/src/pipeline/run";
 import { STEP_ORDER, type StepName } from "@/src/pipeline/steps";
 
@@ -22,17 +23,18 @@ interface RunState {
   classify: ClassifyResult | null;
   plan: PlanResult | null;
   checks: ChecksResult | null;
+  verify: VerifyResult | null;
   declined: Declined | null;
   options: { title: string; url: string | null }[] | null;
   log: RunLog | null;
   error: string | null;
 }
 
-const BUILT: StepName[] = ["fetch", "classify", "plan", "checks"];
+const BUILT: StepName[] = ["fetch", "classify", "plan", "checks", "verify"];
 
 function freshState(): RunState {
   const steps = Object.fromEntries(STEP_ORDER.map((s) => [s, BUILT.includes(s) ? "pending" : "not_built"])) as Record<StepName, StepState>;
-  return { steps, fetch: null, classify: null, plan: null, checks: null, declined: null, options: null, log: null, error: null };
+  return { steps, fetch: null, classify: null, plan: null, checks: null, verify: null, declined: null, options: null, log: null, error: null };
 }
 
 export default function Page() {
@@ -276,7 +278,7 @@ export default function Page() {
         return (
           <section className="panel">
             <h2>{copy.checks.heading}</h2>
-            <p className="muted">{copy.checks.unverified}</p>
+            {!run.verify && <p className="muted">{copy.checks.unverified}</p>}
             <ol className="findings">
               {ch.findings.map((f) => (
                 <li key={f.id} className={`finding ${f.status} ${f.verdict}`}>
@@ -317,6 +319,51 @@ export default function Page() {
         );
       })()}
 
+      {run?.verify && !run.verify.ok && (
+        <section className="panel fail">
+          <h2>{copy.verify.failHeading}</h2>
+          <dl className="facts">
+            <dt>Reason</dt><dd><code>{run.verify.reason}</code></dd>
+            <dt>Detail</dt><dd>{run.verify.detail}</dd>
+          </dl>
+        </section>
+      )}
+
+      {run?.verify && run.verify.ok && (() => {
+        const v = run.verify;
+        const droppedCount = v.claimsMade - v.claimsSurviving;
+        const template = droppedCount === 0 ? copy.verify.sentenceNoneDropped : copy.verify.sentence;
+        const sentence = template
+          .replace("{made}", String(v.claimsMade))
+          .replace("{surviving}", String(v.claimsSurviving))
+          .replace("{dropped}", String(droppedCount));
+        return (
+          <section className="panel">
+            <h2>{copy.verify.heading}</h2>
+            <p>{sentence}</p>
+            {v.dropped.length > 0 && (
+              <>
+                <h2>{copy.verify.droppedHeading}</h2>
+                <ul>
+                  {v.dropped.map((d) => (
+                    <li key={d.id}>
+                      <strong>{d.id} {d.name}</strong> · {copy.verify.stage[d.stage]} · <span className="muted">{d.reason}</span>
+                      {d.quote && <blockquote>“{d.quote}”</blockquote>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {v.downgraded.length > 0 && (
+              <>
+                <h2>{copy.verify.downgradedHeading}</h2>
+                <ul>{v.downgraded.map((d) => <li key={d.id}><strong>{d.id}</strong> {d.from} → {d.to} · <span className="muted">{d.reason}</span></li>)}</ul>
+              </>
+            )}
+          </section>
+        );
+      })()}
+
       <footer><p className="muted">{copy.limits}</p></footer>
     </main>
   );
@@ -350,4 +397,6 @@ function apply(state: RunState, event: RunEvent) {
   if (event.step === "plan" && event.status === "failed") state.plan = event.error;
   if (event.step === "checks" && event.status === "done") state.checks = event.result;
   if (event.step === "checks" && event.status === "failed") state.checks = event.error;
+  if (event.step === "verify" && event.status === "done") state.verify = event.result;
+  if (event.step === "verify" && event.status === "failed") state.verify = event.error;
 }

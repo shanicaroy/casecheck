@@ -210,3 +210,31 @@ twelve-finding answer with images can take a couple of minutes.
 **Still open (for slice 6): which dimensions may be named the weakest part.** The slice 4 brief
 said only ★ dimensions A–E; the contract's worked example names H. For now only K and L are
 ineligible; the rest wait for Shanica's call.
+
+## 2026-09-07 · Step 5, Self-verify: code first, model second
+
+**Pass 1 is code and cannot be argued with.** A quote-based finding survives only if its quote
+literally appears in the de-duplicated page text; an image-based one only if the cited image was
+captured. No model is consulted and there is no appeal. Reason: this is the check that catches
+failure #1 in §4 (invented specifics), and a model asked "is this quote real?" can be persuaded by
+a plausible quote. String matching cannot.
+
+**Matching normalises punctuation, not words.** Whitespace runs, line breaks and non-breaking
+spaces collapse to one space; curly quotes become straight; en, em and figure dashes become a
+hyphen; the ellipsis character becomes three dots. Letter case is kept. Reason: browsers and models
+both change punctuation; a real quote must not be lost to that, and a changed word must still fail.
+
+**Pass 2 asks the cheap model one question per surviving finding, in parallel (four at a time).**
+"Does this evidence support this claim as stated?" with the verdict, the reasoning, and the exact
+quote (or the image, attached). supports → unchanged; partially_supports → confidence down one
+level with the reason appended; does_not_support → dropped with the reason. One question per
+finding, rather than one call for all twelve, so findings cannot borrow support from each other.
+
+**Claims made counts what the check model asserted, including claims it made without usable
+evidence.** A finding dropped in step 4 for lacking a quote was still a claim, and the eval's
+hallucination metric should see it. A dimension the model never returned is not a claim.
+
+**Dropped findings cannot reach step 6, by type.** Step 5 returns two arrays: `surviving`, whose
+element type has no status field and a non-null evidence, and `dropped`. The report step is written
+against `SurvivingFinding` only. The dropped list, the quote each rested on, and the per-finding
+trail go to the owner view; the designer sees the one sentence of §14.8.

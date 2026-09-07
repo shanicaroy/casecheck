@@ -4,7 +4,7 @@
  * (contract §7: steps stream as they complete, no blank spinner). The CLI
  * prints them. Neither knows anything about the steps themselves.
  *
- * Built so far: fetch → classify → plan → checks. Later slices append steps here.
+ * Built so far: fetch → classify → plan → checks → verify. Slice 6 appends the report.
  *
  * Two boundaries live here, not in any step:
  *  - the too-thin floor (contract §5): below limits.thinFloorWords of real
@@ -18,6 +18,7 @@ import { fetchPage, type FetchOk, type FetchFail } from "../steps/fetch";
 import { classify, type ClassifyOk, type ClassifyFail } from "../steps/classify";
 import { plan as planChecks, type PlanOk, type PlanFail } from "../steps/plan";
 import { runChecks, type ChecksOk, type ChecksFail } from "../steps/checks";
+import { verify, type VerifyOk, type VerifyFail } from "../steps/verify";
 import type { CallModel, ModelUsage } from "../lib/model";
 import type { LevelInputs } from "../lib/levels";
 import { limits as defaultLimits, type Limits } from "../../config/limits";
@@ -44,6 +45,8 @@ export interface RunLog {
   followedTo: string | null;
   /** Narrative words on the reviewed page, judged against the thin floor. */
   narrativeWordCount: number | null;
+  /** Eval sheet §7: the hallucination metric. */
+  claims: { made: number; surviving: number } | null;
 }
 
 /** The fetch result as sent to the browser: image bytes removed (§9, §14). */
@@ -71,6 +74,8 @@ export type RunEvent =
   | { type: "step"; step: "plan"; status: "failed"; error: PlanFail; durationMs: number }
   | { type: "step"; step: "checks"; status: "done"; result: ChecksOk; durationMs: number }
   | { type: "step"; step: "checks"; status: "failed"; error: ChecksFail; durationMs: number }
+  | { type: "step"; step: "verify"; status: "done"; result: VerifyOk; durationMs: number }
+  | { type: "step"; step: "verify"; status: "failed"; error: VerifyFail; durationMs: number }
   | { type: "run"; status: "declined"; declined: Declined; log: RunLog }
   | { type: "run"; status: "stopped" | "complete"; log: RunLog };
 
@@ -92,6 +97,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
     selection: null,
     followedTo: null,
     narrativeWordCount: null,
+    claims: null,
   };
   const lim = { ...defaultLimits, ...deps.limits };
   const finish = (status: "stopped" | "complete"): RunEvent => {
@@ -230,6 +236,21 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
   log.steps.push({ step: "checks", durationMs: ms4, usage: checked.usage });
   yield { type: "step", step: "checks", status: "done", result: checked, durationMs: ms4 };
 
-  // Steps 5–6 arrive in later slices.
+  // 5. Self-verify — code first, then the cheap model once per surviving finding.
+  yield { type: "step", step: "verify", status: "running" };
+  const t5 = Date.now();
+  const verified = await verify(checked, fetched, { callModel: deps.callModel });
+  const ms5 = Date.now() - t5;
+  if (!verified.ok) {
+    log.steps.push({ step: "verify", durationMs: ms5 });
+    yield { type: "step", step: "verify", status: "failed", error: verified, durationMs: ms5 };
+    yield finish("stopped");
+    return;
+  }
+  log.steps.push({ step: "verify", durationMs: ms5, usage: verified.usage });
+  log.claims = { made: verified.claimsMade, surviving: verified.claimsSurviving };
+  yield { type: "step", step: "verify", status: "done", result: verified, durationMs: ms5 };
+
+  // Step 6 arrives in the next slice.
   yield finish("complete");
 }

@@ -19,7 +19,7 @@ export const copy = {
 
   // Honest build status. Remove when the full six-step flow is live.
   buildStatus:
-    "Early build: right now this page runs steps 1 to 4 of 6 (fetch, classify, plan, checks) and shows the raw findings. Self-verification and the final review are not built yet, so treat findings as unverified.",
+    "Early build: right now this page runs steps 1 to 5 of 6 (fetch, classify, plan, checks, self-verify) and shows the verified findings. The final review is not built yet.",
 
   form: {
     label: "Portfolio link",
@@ -43,6 +43,17 @@ export const copy = {
     too_thin:
       "This page has too little case-study narrative for a fair read. Under the floor, the tool would be guessing, and a guess is worse than no review. If the full case study lives on another page, paste that link instead. If the story is in images, add the narrative as text so it can be read.",
     detailLabel: "What was found",
+  },
+
+  // Contract §14.8: the claims-made vs claims-surviving count, in one sentence.
+  verify: {
+    heading: "How sure it is",
+    sentence: "It made {made} claims and could verify {surviving} against your page; the {dropped} it couldn't were dropped.",
+    sentenceNoneDropped: "It made {made} claims and could verify all of them against your page.",
+    droppedHeading: "Dropped claims (owner view)",
+    downgradedHeading: "Confidence lowered on verification",
+    stage: { checks: "no usable evidence", quote_not_found: "quote not found on the page", image_not_found: "image not captured", does_not_support: "evidence does not support the claim" },
+    failHeading: "Couldn't verify the findings",
   },
 
   checks: {

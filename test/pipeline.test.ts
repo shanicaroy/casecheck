@@ -67,19 +67,28 @@ const checksAnswer: ChecksProposal = {
   could_not_judge: [],
 };
 // Answers whichever step is asking, judged by the prompt it was given.
-const fake: CallModel = async (call) => ({
-  data: call.schema.parse(/planning step/.test(call.system) ? proposal : /check step/.test(call.system) ? checksAnswer : singleCase),
-  usage: { tier: call.tier, model: "fake", inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, durationMs: 1 },
-});
+const fake: CallModel = async (call) => {
+  const answer = /planning step/.test(call.system)
+    ? proposal
+    : /check step/.test(call.system)
+      ? checksAnswer
+      : /verification step/.test(call.system)
+        ? { answer: "supports", reason: "The quote shows it." }
+        : singleCase;
+  return {
+    data: call.schema.parse(answer),
+    usage: { tier: call.tier, model: "fake", inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, durationMs: 1 },
+  };
+};
 // The fixture is deliberately thin; lower the floor to let a full run through.
 const lowFloor = { thinFloorWords: 10 };
 
-test("fetch, classify, plan, checks: each announced before it runs, then a run log", async () => {
+test("fetch, classify, plan, checks, verify: each announced before it runs, then a run log", async () => {
   const events: RunEvent[] = [];
   for await (const e of runPipeline(`${base}/case`, {}, { callModel: fake, limits: lowFloor })) events.push(e);
 
   const shape = events.map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
-  assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "checks:running", "checks:done", "run:complete"]);
+  assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "checks:running", "checks:done", "verify:running", "verify:done", "run:complete"]);
 
   // Image bytes never reach the browser.
   const fetchEvent = events.find((e) => e.type === "step" && e.step === "fetch" && e.status === "done");
@@ -93,6 +102,12 @@ test("fetch, classify, plan, checks: each announced before it runs, then a run l
   assert.equal(checksEvent.result.embedCount, 1);
   assert.match(checksEvent.result.couldNotJudge.join("\n"), /1 embedded video\/prototype not reviewed/);
 
+  // Every quote in the stand-in answer is on the fixture page, so all twelve survive.
+  const verifyEvent = events.find((e) => e.type === "step" && e.step === "verify" && e.status === "done");
+  assert.ok(verifyEvent && verifyEvent.type === "step" && verifyEvent.step === "verify" && verifyEvent.status === "done");
+  assert.equal(verifyEvent.result.claimsMade, 12);
+  assert.equal(verifyEvent.result.claimsSurviving, 12);
+
   const planEvent = events.find((e) => e.type === "step" && e.step === "plan" && e.status === "done");
   assert.ok(planEvent && planEvent.type === "step" && planEvent.step === "plan" && planEvent.status === "done");
   // No level stated: current inferred from classify (junior), target one step up (mid).
@@ -104,9 +119,11 @@ test("fetch, classify, plan, checks: each announced before it runs, then a run l
   const last = events.at(-1)!;
   assert.equal(last.type, "run");
   if (last.type !== "run" || last.status === "declined") return;
-  assert.equal(last.log.steps.length, 4);
+  assert.equal(last.log.steps.length, 5);
   assert.equal(last.log.steps[3].step, "checks");
   assert.equal(last.log.steps[3].usage?.tier, "strong");
+  assert.equal(last.log.steps[4].step, "verify");
+  assert.deepEqual(last.log.claims, { made: 12, surviving: 12 });
   assert.deepEqual(last.log.selection, { mode: "single_page", title: "Huddle" });
 });
 
