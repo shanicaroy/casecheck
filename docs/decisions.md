@@ -276,3 +276,30 @@ surviving citation is replaced with the weakest finding's own level gap (§4.2, 
 step. The fix and the framing are what the designer acts on, and the tone rules of §3 are the
 hardest to hold, so it gets the strong model. One call, ~6k output tokens. Change the tier in
 `src/steps/report.ts` if the eval shows the cheap tier holds.
+
+## 2026-09-07 · Output layer, step 1: the landing view
+
+**The UI reference (`case-check-ui-reference.html`) is the visual source of truth.** Its tokens,
+type scale and structure are ported into `app/globals.css` as-is. Satoshi loads from Fontshare in
+the root layout, weights 300/400/500 only. Gradients appear only on the aurora, the orb, the
+primary button and the brand mark, as the reference draws them. 4px radius everywhere.
+
+**Landing copy lives in `content/copy.ts` under `landing`.** The rubric list on the landing takes
+its names and weighting from `rubric/dimensions.json` and its one-line explanations from copy, so
+the star marks can never disagree with the data the engine uses.
+
+**The two level selects wire straight into the pipeline.** Values map to the engine's levels;
+`lead` is added as a level because the reference offers it as a target, so one step up from senior
+is now lead. Nothing is preselected: the reference's preselected "Mid-level" was demo content.
+
+**Owner mode is reachable only with `?owner` in the URL.** The reference shows the toggle in the
+header; contract §14 says owner view is reached by a toggle or a query flag and is never the
+default, and the brief says it is never shown to designers. Hiding the toggle itself behind the
+flag satisfies both. Flip this by rendering the button unconditionally in `components/Header.tsx`.
+
+**The photo slot is a gradient square until a photo is supplied.** Set `landing.brain.photoSrc` in
+copy to a file under `public/` and the slot renders it.
+
+**The running and report views are temporary raw panels** (`components/RawRun.tsx`) until steps 2
+and 3 of the output layer replace them. They are styled under a `.raw` namespace so nothing from
+the reference is touched when they go.

@@ -45,7 +45,8 @@ function fakeModel(answer: PlanProposal, seen: { user?: string; system?: string 
 
 test("levels: stated wins; otherwise inferred, target one step up; unclear is assumed junior and written down", () => {
   assert.equal(nextLevelUp("student"), "junior");
-  assert.equal(nextLevelUp("senior"), "senior");
+  assert.equal(nextLevelUp("senior"), "lead");
+  assert.equal(nextLevelUp("lead"), "lead");
   const a = resolveLevels({}, "mid");
   assert.deepEqual([a.current, a.currentSource, a.target, a.targetSource], ["mid", "inferred", "senior", "default_next_up"]);
   assert.equal(a.assumptions.length, 1);

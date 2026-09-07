@@ -3,14 +3,14 @@
  * mid / senior) and where they want to be next. Both are optional; if absent,
  * the tool infers the current level and assumes the next step up."
  */
-export const LEVELS = ["student", "junior", "mid", "senior"] as const;
+export const LEVELS = ["student", "junior", "mid", "senior", "lead"] as const;
 export type Level = (typeof LEVELS)[number];
 
 export function isLevel(value: unknown): value is Level {
   return typeof value === "string" && (LEVELS as readonly string[]).includes(value);
 }
 
-/** One step up. A senior aiming higher is still framed as senior in v1. */
+/** One step up. Lead is the top of the list, so a lead aiming higher stays lead. */
 export function nextLevelUp(level: Level): Level {
   const i = LEVELS.indexOf(level);
   return LEVELS[Math.min(i + 1, LEVELS.length - 1)];
