@@ -19,13 +19,33 @@ export const copy = {
 
   // Honest build status. Remove when the full six-step flow is live.
   buildStatus:
-    "Early build: right now this page runs step 1 of 6 (fetch) and shows you exactly what the tool sees. The review itself is not built yet.",
+    "Early build: right now this page runs steps 1 and 2 of 6 (fetch and classify) and shows you exactly what the tool sees. The review itself is not built yet.",
 
   form: {
     label: "Portfolio link",
     placeholder: "https://yourname.framer.website/case-study",
     submit: "Check",
-    running: "Step 1 of 6 · Fetching the page…",
+  },
+
+  steps: {
+    fetch: "Fetch the page",
+    classify: "Read and classify",
+    plan: "Plan the checks",
+    checks: "Run the rubric checks",
+    verify: "Self-verify every claim",
+    report: "Report",
+    notBuilt: "not built yet",
+  },
+
+  classify: {
+    heading: "What kind of page this is",
+    chooseHeading: "Which case study should be reviewed?",
+    chooseBody: "This link is a portfolio with several case studies. Pick one and the check runs again on that page.",
+    noLink: "no link found on the page",
+    inventoryHeading: "What's on the page",
+    assumptionsHeading: "Assumptions the tool made",
+    externalLinks: "Links to fuller case studies elsewhere (not read)",
+    failHeading: "Couldn't classify this page",
   },
 
   result: {

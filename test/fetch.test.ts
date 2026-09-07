@@ -51,6 +51,12 @@ test("returns cleaned, de-duplicated visible text plus raw page facts", async ()
   assert.equal(lines.filter((l) => l.startsWith("Research is claimed")).length, 1);
   assert.ok(lines.includes("Huddle"));
   assert.ok(result.wordCount > 10);
+
+  // Links are captured with their visible text, for the classify step.
+  const behance = result.links.find((l) => l.href.includes("behance.net"));
+  assert.ok(behance);
+  assert.equal(behance.text, "View the full case study on Behance");
+  assert.ok(result.links.some((l) => l.text === "Work"));
 });
 
 test("captures an animated stat counter at its initial value (known artefact, contract §8)", async () => {

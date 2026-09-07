@@ -29,6 +29,11 @@ export interface FetchOptions {
   settleMs?: number;
 }
 
+export interface PageLink {
+  text: string;
+  href: string;
+}
+
 export interface FetchOk {
   ok: true;
   requestedUrl: string;
@@ -39,8 +44,10 @@ export interface FetchOk {
   /** Visible page text, cleaned and de-duplicated. */
   text: string;
   wordCount: number;
-  /** Raw signal for the classify step (e.g. an images-only page). Not a judgement. */
+  /** Raw signal for the classify step. Counts <img> only; SVG and CSS images are missed. */
   imageCount: number;
+  /** Every link with visible text, so later steps can name case studies and spot "full case study elsewhere". */
+  links: PageLink[];
   fetchedAt: string;
   durationMs: number;
 }
@@ -137,6 +144,19 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
     const title = await page.title();
     const rawText = await page.evaluate(() => document.body?.innerText ?? "");
     const imageCount = await page.evaluate(() => document.images.length);
+    const links = await page.evaluate(() => {
+      const seen = new Set<string>();
+      const out: { text: string; href: string }[] = [];
+      for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+        const href = a.href;
+        const text = (a.innerText || a.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim();
+        if (!/^https?:/.test(href) || text === "" || seen.has(href)) continue;
+        seen.add(href);
+        out.push({ text, href });
+        if (out.length >= 200) break;
+      }
+      return out;
+    });
     const text = cleanText(rawText);
 
     return {
@@ -148,6 +168,7 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
       text,
       wordCount: wordCount(text),
       imageCount,
+      links,
       fetchedAt: new Date(started).toISOString(),
       durationMs: Date.now() - started,
     };

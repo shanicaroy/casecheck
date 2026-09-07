@@ -7,11 +7,13 @@ does and does not do.
 ## Layout
 
 ```
-app/            the web page (Next.js): one page plus /api/fetch, no review logic
+app/            the web page (Next.js): one page plus API routes, no review logic
+config/         which Claude model runs the cheap and strong tiers
 content/        every word shown on the page, editable without touching components
-src/steps/      the six agent steps, one file each (so far: fetch only)
-src/lib/        small helpers with no product logic (text clean-up, browser launch)
-src/cli/        run a step by hand from the terminal
+src/steps/      the six agent steps, one file each (so far: fetch, classify)
+src/pipeline/   runs the steps in order and streams one event per step
+src/lib/        small helpers with no product logic (text clean-up, browser launch, model call, prompt loading)
+src/cli/        run the pipeline or a step by hand from the terminal
 rubric/         the UXPective storytelling framework as data, editable without touching code
 prompts/        every model prompt, one per step, editable without touching code
 docs/           decision log
@@ -24,7 +26,8 @@ test/           tests, with local HTML fixtures so no internet is needed
 npm install
 npx playwright install chromium   # once, downloads the headless browser for local use
 npm run dev                       # the page, at http://localhost:3000
-npm run fetch -- https://someone.framer.website/case-study-01   # step 1 from the terminal
+npm run fetch -- https://someone.framer.website/case-study-01   # step 1 only
+npm run check -- https://someone.framer.website/case-study-01   # the pipeline, needs ANTHROPIC_API_KEY in .env.local
 npm test
 ```
 
@@ -35,5 +38,5 @@ failure reason.
 ## Hosting
 
 Deployed on Vercel at casecheck.uxpective.com. The project's Framework Preset must be **Next.js**.
-No environment variables are needed yet. On Vercel the fetch step uses the slim Chromium bundled by
+`ANTHROPIC_API_KEY` must be set in the project's Environment Variables. On Vercel the fetch step uses the slim Chromium bundled by
 `@sparticuz/chromium`; locally it uses Playwright's own download. See `src/lib/browser.ts`.

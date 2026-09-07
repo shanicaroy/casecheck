@@ -90,3 +90,37 @@ cover artwork. The count only sees `<img>` elements; this portfolio draws its co
 and other sites use CSS background images. Step 2 must not treat a low image count as proof of a
 text-only page. Widening the count (SVG, `<picture>`, backgrounds) is a small change for a later
 slice, or screenshots make the question moot once vision arrives in step 4.
+
+## 2026-09-07 · Slice two of the evaluation: step 2, Classify
+
+**Models: `claude-sonnet-5` for the cheap tier, `claude-opus-5` for the strong tier.** Set in
+`config/models.ts`, overridable per environment. Contract §7 requires a cheap tier for
+fetch/classify/plan and a strong one for checks/self-verify, with the cost difference recorded.
+Every model call returns model, tokens and time, and the run log keeps them per step (eval sheet §7).
+
+**Model answers are constrained to a schema, never parsed from prose.** Each step declares the exact
+shape of the answer it needs (a Zod schema next to the step's code) and the API is asked for
+structured output matching it. An answer that breaks the shape is rejected as `invalid_output`.
+Reason: contract §7 "Structured output"; also, typed data is what the later steps and the eval log
+need.
+
+**Prompt text lives in `prompts/classify.md`; the answer's shape lives in `src/steps/classify.ts`.**
+The wording is Shanica's to edit without code. The shape is code because the code that reads it
+depends on it.
+
+**Which case study is reviewed is a rule in code, not a model choice.** Single case study page:
+that one. Index with one case study: that one, logged as assumed. Index with several: stop and ask
+(decision of 2026-09-06). Not a portfolio or too little content: nothing selected. Reason: a rule in
+code cannot drift between runs; the eval sheet §7 needs "asked or assumed" recorded reliably.
+
+**Page text is capped at 60,000 characters before the model sees it, and the cap is declared.**
+Enough for any single case study; protects cost and the cheap model's context. When it triggers,
+the classification carries `textTruncated: true` so later steps can say so.
+
+**The fetch step now also captures links (visible text + href).** Needed so classify can name
+which page each case study lives on (the "ask which one" flow) and so the "full case study
+elsewhere" link the contract warns about can be detected rather than guessed.
+
+**Steps stream to the page as newline-delimited JSON events.** One event per step transition,
+written as it happens, so the step list on the page updates live and there is never a blank
+spinner (contract §7). The same event stream is what the terminal command prints.
