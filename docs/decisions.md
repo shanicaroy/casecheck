@@ -303,3 +303,21 @@ copy to a file under `public/` and the slot renders it.
 **The running and report views are temporary raw panels** (`components/RawRun.tsx`) until steps 2
 and 3 of the output layer replace them. They are styled under a `.raw` namespace so nothing from
 the reference is touched when they go.
+
+## 2026-09-07 · Output layer, step 1 rebuilt to UI reference v6
+
+**Reference v6 replaces the first reference.** Its CSS is ported verbatim into `app/globals.css`.
+What changed and is now in the app: no header on the landing; the UXPective mark (defined once in
+the root layout, used by the avatar, the header brand and, in step 2, the reviewing orb); one
+headline; the composer with the two level selects inside it and a black start button that wakes
+when a link is present; a cursor-tracked light behind the composer, off under reduced motion; a
+short trust line; "how it works" as its own view reached by the link, `#how`, with Back and Escape
+returning to the landing. The brand gradient appears in exactly the three places the reference
+names. The primary button is black, not gradient, as v6 draws it.
+
+**Views are state, with the hash for the two deep-linkable ones.** `#how` and `#report` push to
+history and restore on back; the running view never restores from a hash because a run cannot be
+resumed. Cancel and Back abort the stream.
+
+**The §9 sentence is on the how view; the landing carries the short trust line**, as the
+reference lays them out. Both are in `content/copy.ts`.

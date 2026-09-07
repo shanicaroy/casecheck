@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * The landing view from the UI reference: aurora, hero with the link field and
- * the two optional level selects, the "how this works" section with the photo
- * slot, the two disclosure blocks, and the footer with the §9 sentence.
- * Every word comes from content/copy.ts; the rubric names and weighting come
- * from rubric/dimensions.json.
+ * The landing from the UI reference v6: no header. The mark, one line, the
+ * composer (link field, the two optional level selects, the start button),
+ * one trust line, one link to the how-it-works view. Vertically centred over
+ * the aurora. The start button wakes when a link is present; the light behind
+ * the composer follows the cursor unless motion is reduced.
  */
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { copy } from "@/content/copy";
-import dimensions from "@/rubric/dimensions.json";
-import { LEVELS, isLevel, type Level } from "@/src/lib/levels";
+import { Mark } from "@/components/Mark";
+import { isLevel, type Level } from "@/src/lib/levels";
 
 export interface StartRequest {
   url: string;
@@ -21,14 +21,43 @@ export interface StartRequest {
 const CURRENT_OPTIONS: Level[] = ["student", "junior", "mid", "senior"];
 const TARGET_OPTIONS: Level[] = ["junior", "mid", "senior", "lead"];
 
-export function Landing({ onStart, busy, problem }: { onStart: (req: StartRequest) => void; busy: boolean; problem: string | null }) {
+export function Landing({ onStart, onHow, busy, problem }: { onStart: (req: StartRequest) => void; onHow: () => void; busy: boolean; problem: string | null }) {
   const [url, setUrl] = useState("");
   const [current, setCurrent] = useState("");
   const [target, setTarget] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const l = copy.landing;
+
+  // Cursor light: the glow's centre eases toward the pointer (reference behaviour).
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const main = mainRef.current;
+    if (!wrap || !main || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let tx = 50, ty = 50, cx = 50, cy = 50, raf: number | null = null;
+    const step = () => {
+      cx += (tx - cx) * 0.08;
+      cy += (ty - cy) * 0.08;
+      wrap.style.setProperty("--mx", `${cx}%`);
+      wrap.style.setProperty("--my", `${cy}%`);
+      raf = Math.abs(tx - cx) > 0.1 || Math.abs(ty - cy) > 0.1 ? requestAnimationFrame(step) : null;
+    };
+    const onMove = (e: MouseEvent) => {
+      const r = wrap.getBoundingClientRect();
+      tx = Math.max(-40, Math.min(140, ((e.clientX - r.left) / r.width) * 100));
+      ty = Math.max(-80, Math.min(180, ((e.clientY - r.top) / r.height) * 100));
+      if (raf === null) raf = requestAnimationFrame(step);
+    };
+    main.addEventListener("mousemove", onMove);
+    return () => {
+      main.removeEventListener("mousemove", onMove);
+      if (raf !== null) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (!url.trim()) return;
     onStart({
       url: url.trim(),
       currentLevel: isLevel(current) ? current : undefined,
@@ -36,85 +65,41 @@ export function Landing({ onStart, busy, problem }: { onStart: (req: StartReques
     });
   }
 
-  const byId = new Map(dimensions.map((d) => [d.id, d]));
-
   return (
-    <main className="landing">
-      <div className="aurora" aria-hidden="true"><span className="a1" /><span className="a2" /><span className="a3" /></div>
-
+    <main className="landing" ref={mainRef}>
+      <div className="aurora" aria-hidden="true"><span className="a1" /><span className="a2" /><span className="a3" /><span className="a4" /></div>
       <section className="hero">
+        <div className="avatar" aria-hidden="true"><Mark /></div>
         <h1>{l.hero.title}</h1>
-        <p>{l.hero.lede}</p>
 
-        <form className="review-form" onSubmit={submit}>
-          <input className="field" id="url" type="url" required placeholder={l.hero.placeholder} value={url}
-            onChange={(e) => setUrl(e.target.value)} disabled={busy} aria-label={l.hero.placeholder} />
-          <button className="btn btn-primary" type="submit" disabled={busy}>{l.hero.start}</button>
-        </form>
-        <div className="levels">
-          <select className={`field select${current ? "" : " placeholder"}`} aria-label={l.hero.currentLevel} value={current} onChange={(e) => setCurrent(e.target.value)} disabled={busy}>
-            <option value="">{l.hero.currentLevel}</option>
-            {CURRENT_OPTIONS.map((lv) => <option key={lv} value={lv}>{l.levels[lv]}</option>)}
-          </select>
-          <select className={`field select${target ? "" : " placeholder"}`} aria-label={l.hero.targetLevel} value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy}>
-            <option value="">{l.hero.targetLevel}</option>
-            {TARGET_OPTIONS.map((lv) => <option key={lv} value={lv}>{l.levels[lv]}</option>)}
-          </select>
-        </div>
-        <p className="hint">{l.hero.hint}</p>
-        {problem && <p className="problem" role="alert">{problem}</p>}
-        <a className="how btn-text" href="#brain">{l.hero.how}</a>
-      </section>
-
-      <section className="brain" id="brain">
-        <div className="brain-head">
-          <div className="photo" aria-label={l.brain.photoAlt}>
-            {l.brain.photoSrc ? <img src={l.brain.photoSrc} alt={l.brain.photoAlt} /> : l.brain.photoSlot}
-          </div>
-          <div>
-            <h2>{l.brain.title}</h2>
-            <p className="who">{l.brain.who}</p>
-            <p className="lede">{l.brain.lede1}</p>
-            <p className="lede">{l.brain.lede2}</p>
-          </div>
-        </div>
-
-        <div className="three">
-          {l.brain.three.map((t) => (
-            <div key={t.title}><h3>{t.title}</h3><p>{t.body}</p></div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 48 }}>
-          <details>
-            <summary>{l.brain.twelveSummary}</summary>
-            <div className="disc-body">
-              <ul className="rubric">
-                {l.brain.rubricOrder.map((id) => {
-                  const d = byId.get(id)!;
-                  const name = l.brain.rubricShortNames[id] ?? d.name;
-                  return (
-                    <li key={id}>
-                      <b>{name} {d.star && <span className="star">{l.brain.weighted}</span>}</b>
-                      {l.brain.rubricLines[id as keyof typeof l.brain.rubricLines]}
-                    </li>
-                  );
-                })}
-              </ul>
+        <div className={`reviewer-wrap${url.trim() ? " has-url" : ""}`} ref={wrapRef}>
+          <div className="reviewer-glow" aria-hidden="true" />
+          <form className="reviewer" onSubmit={submit}>
+            <input className="reviewer-input" id="url" type="url" required autoComplete="off" placeholder={l.hero.placeholder}
+              aria-label={l.hero.placeholder} value={url} onChange={(e) => setUrl(e.target.value)} disabled={busy} />
+            <div className="reviewer-bar">
+              <div className="reviewer-tools">
+                <select className={`tool${current ? "" : " placeholder"}`} aria-label={l.hero.currentLevel} value={current} onChange={(e) => setCurrent(e.target.value)} disabled={busy}>
+                  <option value="">{l.hero.currentLevel}</option>
+                  {CURRENT_OPTIONS.map((lv) => <option key={lv} value={lv}>{l.levels[lv]}</option>)}
+                </select>
+                <select className={`tool${target ? "" : " placeholder"}`} aria-label={l.hero.targetLevel} value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy}>
+                  <option value="">{l.hero.targetLevel}</option>
+                  {TARGET_OPTIONS.map((lv) => <option key={lv} value={lv}>{l.levels[lv]}</option>)}
+                </select>
+              </div>
+              <button className="btn-start" type="submit" disabled={busy}>{l.hero.start}</button>
             </div>
-          </details>
-          <details>
-            <summary>{l.brain.wontSummary}</summary>
-            <div className="disc-body">{l.brain.wontBody}</div>
-          </details>
+          </form>
         </div>
-      </section>
 
-      <footer className="foot">
-        <p>{copy.dataHandling}</p>
-      </footer>
+        <p className="trust">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#3B3B3B" strokeWidth="1.3" /><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="#3B3B3B" strokeWidth="1.3" /></svg>
+          {l.hero.trust}
+        </p>
+        {problem && <p className="problem" role="alert">{problem}</p>}
+        <a className="how" href="#how" onClick={(e) => { e.preventDefault(); onHow(); }}>{l.hero.how}</a>
+      </section>
     </main>
   );
 }
-
-export { LEVELS };

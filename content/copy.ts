@@ -7,18 +7,18 @@
 export const copy = {
   name: "Case Check",
 
-  // The landing view, from the UI reference. Sentence case; no em dashes; no all-caps labels.
+  // The landing view, from the UI reference v6. Sentence case; no em dashes; no all-caps labels.
   landing: {
     headerNote: "Built on Shanica Roy's evaluation criteria",
     ownerMode: "Owner mode",
+    back: "Back",
     hero: {
-      title: "Review your UX case study.",
-      lede: "Case Check finds the weakest part of your story and tells you the one thing to fix first.",
-      placeholder: "Paste your case study link",
+      title: "Review your ux case study",
+      placeholder: "Paste your case study link, I'll take it from here",
       start: "Start review",
-      currentLevel: "Current level (optional)",
-      targetLevel: "Level you're targeting (optional)",
-      hint: "These only change the expectations used during the review.",
+      currentLevel: "Current level",
+      targetLevel: "Targeting",
+      trust: "Held only while the review runs. Never used to train anything.",
       how: "How Case Check works",
     },
     levels: { student: "Student", junior: "Junior", mid: "Mid-level", senior: "Senior", lead: "Lead" },
