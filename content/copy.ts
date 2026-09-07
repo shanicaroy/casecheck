@@ -19,7 +19,7 @@ export const copy = {
 
   // Honest build status. Remove when the full six-step flow is live.
   buildStatus:
-    "Early build: right now this page runs steps 1 to 3 of 6 (fetch, classify, plan) and shows you exactly what the tool sees and where it will look hardest. The review itself is not built yet.",
+    "Early build: right now this page runs steps 1 to 4 of 6 (fetch, classify, plan, checks) and shows the raw findings. Self-verification and the final review are not built yet, so treat findings as unverified.",
 
   form: {
     label: "Portfolio link",
@@ -35,6 +35,28 @@ export const copy = {
     verify: "Self-verify every claim",
     report: "Report",
     notBuilt: "not built yet",
+  },
+
+  // Contract §5: a refusal always says why and what to do instead.
+  declined: {
+    heading: "Not enough to review yet",
+    too_thin:
+      "This page has too little case-study narrative for a fair read. Under the floor, the tool would be guessing, and a guess is worse than no review. If the full case study lives on another page, paste that link instead. If the story is in images, add the narrative as text so it can be read.",
+    detailLabel: "What was found",
+  },
+
+  checks: {
+    heading: "The twelve checks",
+    verdict: { present: "present", weak: "weak", missing: "missing", not_on_this_page: "not on this page" },
+    dropped: "dropped",
+    confidence: "confidence",
+    answer: "Answer",
+    levelGap: "To read as the target",
+    imageEvidence: "Image",
+    couldNotJudge: "Couldn't judge",
+    imagesRead: "What the images added",
+    unverified: "These findings have not been verified against the page yet (step 5).",
+    failHeading: "Couldn't run the checks",
   },
 
   plan: {

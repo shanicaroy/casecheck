@@ -1,14 +1,76 @@
 [
-  { "id": "A", "name": "Problem framing", "star": true },
-  { "id": "B", "name": "Thinking, not process", "star": true },
-  { "id": "C", "name": "Research authenticity", "star": true },
-  { "id": "D", "name": "Constraints and realism", "star": true },
-  { "id": "E", "name": "Iteration", "star": true },
-  { "id": "F", "name": "Decisions and tradeoffs", "star": false },
-  { "id": "G", "name": "Role clarity", "star": false },
-  { "id": "H", "name": "Outcome and honesty", "star": false },
-  { "id": "I", "name": "Learnings and insights", "star": false },
-  { "id": "J", "name": "Editing and readability", "star": false },
-  { "id": "K", "name": "AI-generation signals", "star": false, "crossCutting": true },
-  { "id": "L", "name": "Craft — visual and execution", "star": false, "alwaysLight": true }
+  {
+    "id": "A",
+    "name": "Problem framing",
+    "star": true,
+    "weakestEligible": true
+  },
+  {
+    "id": "B",
+    "name": "Thinking, not process",
+    "star": true,
+    "weakestEligible": true
+  },
+  {
+    "id": "C",
+    "name": "Research authenticity",
+    "star": true,
+    "weakestEligible": true
+  },
+  {
+    "id": "D",
+    "name": "Constraints and realism",
+    "star": true,
+    "weakestEligible": true
+  },
+  {
+    "id": "E",
+    "name": "Iteration",
+    "star": true,
+    "weakestEligible": true
+  },
+  {
+    "id": "F",
+    "name": "Decisions and tradeoffs",
+    "star": false,
+    "weakestEligible": true
+  },
+  {
+    "id": "G",
+    "name": "Role clarity",
+    "star": false,
+    "weakestEligible": true
+  },
+  {
+    "id": "H",
+    "name": "Outcome and honesty",
+    "star": false,
+    "weakestEligible": true
+  },
+  {
+    "id": "I",
+    "name": "Learnings and insights",
+    "star": false,
+    "weakestEligible": true
+  },
+  {
+    "id": "J",
+    "name": "Editing and readability",
+    "star": false,
+    "weakestEligible": true
+  },
+  {
+    "id": "K",
+    "name": "AI-generation signals",
+    "star": false,
+    "crossCutting": true,
+    "weakestEligible": false
+  },
+  {
+    "id": "L",
+    "name": "Craft \u2014 visual and execution",
+    "star": false,
+    "alwaysLight": true,
+    "weakestEligible": false
+  }
 ]

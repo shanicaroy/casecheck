@@ -43,7 +43,7 @@ test("returns cleaned, de-duplicated visible text plus raw page facts", async ()
 
   assert.equal(result.status, 200);
   assert.equal(result.title, "Huddle — a case study");
-  assert.equal(result.imageCount, 2);
+  assert.equal(result.imageCount, 3);
 
   const lines = result.text.split("\n");
   // Hidden breakpoint copies and the visible duplicate are collapsed to one line each.
@@ -57,6 +57,33 @@ test("returns cleaned, de-duplicated visible text plus raw page facts", async ()
   assert.ok(behance);
   assert.equal(behance.text, "View the full case study on Behance");
   assert.ok(result.links.some((l) => l.text === "Work"));
+
+  // Narrative words exclude the navigation bar.
+  assert.ok(result.narrativeWordCount < result.wordCount, "nav words must not count as narrative");
+  assert.ok(result.narrativeWordCount >= 20);
+
+  // The large research-map image is captured as a JPEG; the 1x1 gifs are not.
+  assert.equal(result.imageCandidates, 1);
+  assert.equal(result.images.length, 1);
+  assert.equal(result.images[0].alt, "Research map");
+  assert.equal(result.images[0].mediaType, "image/jpeg");
+  assert.ok(result.images[0].data.length > 1000);
+  assert.ok(result.images[0].width >= 500);
+
+  // Embedded media is counted, not analysed.
+  assert.deepEqual(result.embeds.map((e) => e.kind), ["youtube"]);
+});
+
+test("image capture can be switched off and the cap is honoured", async () => {
+  const off = await fetchPage(`${base}/case`, { settleMs: 500, captureImages: false });
+  assert.equal(off.ok, true);
+  if (!off.ok) return;
+  assert.equal(off.images.length, 0);
+  assert.equal(off.imageCandidates, 1);
+  const capped = await fetchPage(`${base}/case`, { settleMs: 500, limits: { imageCap: 0 } });
+  assert.equal(capped.ok, true);
+  if (!capped.ok) return;
+  assert.equal(capped.images.length, 0);
 });
 
 test("captures an animated stat counter at its initial value (known artefact, contract §8)", async () => {

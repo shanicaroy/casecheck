@@ -23,10 +23,19 @@ export interface ModelUsage {
   durationMs: number;
 }
 
+export interface CallImage {
+  /** Text shown to the model just before the image, e.g. "Image 3 of 5: alt 'Research map', 40% down the page". */
+  label: string;
+  mediaType: "image/jpeg" | "image/png";
+  data: string;
+}
+
 export interface StructuredCall<T> {
   tier: Tier;
   system: string;
   user: string;
+  /** Page images for vision. Each is placed after the text, with its label. */
+  images?: CallImage[];
   schema: ZodType<T>;
   /** low for cheap classification-type work, high for judgement. Default: high. */
   effort?: "low" | "medium" | "high";
@@ -51,7 +60,7 @@ function getClient(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new ModelError("ANTHROPIC_API_KEY is not set on this server.", "not_configured");
   }
-  client ??= new Anthropic({ timeout: 90_000, maxRetries: 2 });
+  client ??= new Anthropic({ timeout: 240_000, maxRetries: 2 });
   return client;
 }
 
@@ -60,13 +69,19 @@ export const callModel: CallModel = async (call) => {
   const model = modelFor(call.tier);
   const anthropic = getClient();
 
+  const content: Anthropic.ContentBlockParam[] = [{ type: "text", text: call.user }];
+  for (const img of call.images ?? []) {
+    content.push({ type: "text", text: img.label });
+    content.push({ type: "image", source: { type: "base64", media_type: img.mediaType, data: img.data } });
+  }
+
   let response;
   try {
     response = await anthropic.messages.parse({
       model,
       max_tokens: call.maxTokens ?? 8_000,
       system: call.system,
-      messages: [{ role: "user", content: call.user }],
+      messages: [{ role: "user", content }],
       output_config: {
         format: zodOutputFormat(call.schema),
         effort: call.effort ?? "high",

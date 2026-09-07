@@ -7,29 +7,32 @@
  */
 import { useState, type FormEvent } from "react";
 import { copy } from "@/content/copy";
-import type { FetchResult } from "@/src/steps/fetch";
+import type { FetchFail } from "@/src/steps/fetch";
 import type { ClassifyResult } from "@/src/steps/classify";
 import type { PlanResult } from "@/src/steps/plan";
-import type { RunEvent, RunLog } from "@/src/pipeline/run";
+import type { ChecksResult } from "@/src/steps/checks";
+import type { RunEvent, RunLog, FetchOkPublic, Declined } from "@/src/pipeline/run";
 import { STEP_ORDER, type StepName } from "@/src/pipeline/steps";
 
 type StepState = "pending" | "running" | "done" | "failed" | "needs_choice" | "not_built";
 
 interface RunState {
   steps: Record<StepName, StepState>;
-  fetch: FetchResult | null;
+  fetch: FetchOkPublic | FetchFail | null;
   classify: ClassifyResult | null;
   plan: PlanResult | null;
+  checks: ChecksResult | null;
+  declined: Declined | null;
   options: { title: string; url: string | null }[] | null;
   log: RunLog | null;
   error: string | null;
 }
 
-const BUILT: StepName[] = ["fetch", "classify", "plan"];
+const BUILT: StepName[] = ["fetch", "classify", "plan", "checks"];
 
 function freshState(): RunState {
   const steps = Object.fromEntries(STEP_ORDER.map((s) => [s, BUILT.includes(s) ? "pending" : "not_built"])) as Record<StepName, StepState>;
-  return { steps, fetch: null, classify: null, plan: null, options: null, log: null, error: null };
+  return { steps, fetch: null, classify: null, plan: null, checks: null, declined: null, options: null, log: null, error: null };
 }
 
 export default function Page() {
@@ -130,8 +133,9 @@ export default function Page() {
           <dl className="facts">
             <dt>Title</dt><dd>{run.fetch.title || "(none)"}</dd>
             <dt>Final URL</dt><dd>{run.fetch.finalUrl}</dd>
-            <dt>Words</dt><dd>{run.fetch.wordCount}</dd>
+            <dt>Words</dt><dd>{run.fetch.wordCount} · narrative {run.fetch.narrativeWordCount}</dd>
             <dt>Links</dt><dd>{run.fetch.links.length}</dd>
+            <dt>Images</dt><dd>{run.fetch.images.length} captured of {run.fetch.imageCandidates}{run.fetch.embeds.length ? ` · ${run.fetch.embeds.length} embedded media` : ""}</dd>
             <dt>Took</dt><dd>{run.fetch.durationMs} ms</dd>
           </dl>
           <details>
@@ -249,6 +253,70 @@ export default function Page() {
         );
       })()}
 
+      {run?.declined && (
+        <section className="panel fail">
+          <h2>{copy.declined.heading}</h2>
+          <p>{copy.declined[run.declined.reason]}</p>
+          <p className="muted">{copy.declined.detailLabel}: {run.declined.detail}</p>
+        </section>
+      )}
+
+      {run?.checks && !run.checks.ok && (
+        <section className="panel fail">
+          <h2>{copy.checks.failHeading}</h2>
+          <dl className="facts">
+            <dt>Reason</dt><dd><code>{run.checks.reason}</code></dd>
+            <dt>Detail</dt><dd>{run.checks.detail}</dd>
+          </dl>
+        </section>
+      )}
+
+      {run?.checks && run.checks.ok && (() => {
+        const ch = run.checks;
+        return (
+          <section className="panel">
+            <h2>{copy.checks.heading}</h2>
+            <p className="muted">{copy.checks.unverified}</p>
+            <ol className="findings">
+              {ch.findings.map((f) => (
+                <li key={f.id} className={`finding ${f.status} ${f.verdict}`}>
+                  <div className="finding-head">
+                    <span className="finding-id">{f.id}{f.star ? " ★" : ""}</span>
+                    <span className="finding-name">{f.name}</span>
+                    <code className={f.status === "dropped" ? "dropped" : f.verdict}>{f.status === "dropped" ? copy.checks.dropped : copy.checks.verdict[f.verdict]}</code>
+                    <span className="muted">{copy.checks.confidence} {f.confidence}{f.confidenceReason ? ` · ${f.confidenceReason}` : ""}</span>
+                  </div>
+                  {f.status === "dropped" ? (
+                    <p className="muted">{f.dropReason}</p>
+                  ) : (
+                    <>
+                      {f.evidence?.kind === "quote" && <blockquote>“{f.evidence.text}”</blockquote>}
+                      {f.evidence?.kind === "image" && <p className="muted">{copy.checks.imageEvidence} {f.evidence.index}: {f.evidence.note}</p>}
+                      <p>{f.reasoning}</p>
+                      {f.answerToQuestion && <p><strong>{copy.checks.answer}:</strong> {f.answerToQuestion}</p>}
+                      {f.levelGap && <p className="muted"><strong>{copy.checks.levelGap}:</strong> {f.levelGap}</p>}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ol>
+            {ch.imagesRead.length > 0 && (
+              <>
+                <h2>{copy.checks.imagesRead}</h2>
+                <ul>{ch.imagesRead.map((i) => <li key={i.index}>{copy.checks.imageEvidence} {i.index}: {[i.narrative_recovered, i.artefact_verified].filter(Boolean).join(" · ") || "nothing usable"}</li>)}</ul>
+              </>
+            )}
+            {ch.couldNotJudge.length > 0 && (
+              <>
+                <h2>{copy.checks.couldNotJudge}</h2>
+                <ul>{ch.couldNotJudge.map((t, i) => <li key={i}>{t}</li>)}</ul>
+              </>
+            )}
+            {ch.adjustments.length > 0 && <ul className="muted">{ch.adjustments.map((a, i) => <li key={i}>{a}</li>)}</ul>}
+          </section>
+        );
+      })()}
+
       <footer><p className="muted">{copy.limits}</p></footer>
     </main>
   );
@@ -269,6 +337,7 @@ function statusLabel(s: StepState): string {
 function apply(state: RunState, event: RunEvent) {
   if (event.type === "run") {
     state.log = event.log;
+    if (event.status === "declined") state.declined = event.declined;
     return;
   }
   state.steps[event.step] = event.status === "running" ? "running" : event.status;
@@ -279,4 +348,6 @@ function apply(state: RunState, event: RunEvent) {
   if (event.step === "classify" && event.status === "failed") state.classify = event.error;
   if (event.step === "plan" && event.status === "done") state.plan = event.result;
   if (event.step === "plan" && event.status === "failed") state.plan = event.error;
+  if (event.step === "checks" && event.status === "done") state.checks = event.result;
+  if (event.step === "checks" && event.status === "failed") state.checks = event.error;
 }

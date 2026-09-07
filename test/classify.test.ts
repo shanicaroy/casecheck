@@ -18,6 +18,10 @@ const fetched: FetchOk = {
   text: "Work\nHuddle\nA 7-week solo concept app for neighbour loneliness.\nAtlas\nRedesigning the onboarding for a B2B tool.",
   wordCount: 20,
   imageCount: 0,
+  narrativeWordCount: 18,
+  images: [],
+  imageCandidates: 0,
+  embeds: [],
   links: [
     { text: "Huddle", href: "https://example.test/work/huddle" },
     { text: "Atlas", href: "https://example.test/work/atlas" },

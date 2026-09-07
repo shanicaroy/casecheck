@@ -156,3 +156,57 @@ of the check step.
 **Runs with nothing to review stop after classify.** Not a portfolio, too little content, or no
 case study selected: the pipeline stops before planning. The designed refusal message for each of
 those cases (§5, §7 error states) is a later slice.
+
+## 2026-09-07 · Step 4, Run checks, with the four v0.2 engine decisions
+
+**Images are captured as element screenshots, not by downloading image files.** The browser
+screenshots each qualifying element as it renders, so inline SVG covers and CSS background images
+count, which fixes the "0 images" undercount from the first live run. Candidates must be at least
+200×120 and outside nav/header/footer. Priority: fewest narrative words within ~500px above and
+below first (thin-text-adjacent, §7), larger first on ties; the chosen ones are then shown in page
+order. JPEG at quality 70. Cap `limits.imageCap` = 8. Bytes live in memory for the run and are
+stripped from every event before it reaches the browser (§9, §14).
+
+**Embedded media is detected and counted, never analysed.** iframes, embeds, objects and video
+elements, with YouTube, Loom and Figma recognised by source. The count becomes one line in
+"couldn't judge", added by code so it cannot be forgotten by the model.
+
+**The too-thin floor is judged in the pipeline, after classify and before plan.** After classify,
+not after fetch, because an index page has little narrative of its own and must still reach the
+"which case study?" question; measured on the page that will actually be reviewed. Before plan, so
+no strong-model call (and no plan call) is spent on a page that will be declined. Narrative words
+are text outside nav/header/footer/aside, de-duplicated. `limits.thinFloorWords` = 150, tuned by
+the eval. Below it the run ends with a `declined` event carrying the count and the floor; the
+wording is in `content/copy.ts` and says why and what to do instead (§5).
+
+**An index page with exactly one case study is followed to that page, one hop.** The decision of
+2026-09-06 said "take that one, logged". Reviewing the index page's own text would review the wrong
+thing, so the pipeline fetches and classifies the case study's URL and continues from there, and
+the run log records `followedTo`.
+
+**Findings are twelve typed objects, A–L in order, and code enforces what the model may not
+break.** No quote, no finding: a quote-based finding with an empty quote, or an image-based one
+with no valid image index, is kept in place with status `dropped` and a reason, never removed
+from the array and never invented. A finding the model omits is likewise recorded as dropped.
+Image-grounded findings are capped at medium confidence. `not_on_this_page` is only available
+when classify found a fuller version elsewhere; otherwise it becomes `missing`, recorded. L is
+always low confidence and never eligible as the weakest part; K, a cross-cutting flag, is never
+eligible either. Eligibility comes from `rubric/dimensions.json`. Every override is an adjustment
+in the result for the owner view.
+
+**Level guidance is tied to a finding by structure.** `level_gap` lives inside each finding and
+is only kept for weak/missing verdicts, so the §4.2 rule (no level advice that is not tied to a
+specific finding on this case) is enforced by shape, not by hoping the model complies.
+
+**The plan is consumed in the prompt's user message, not in the system prompt.** Each dimension's
+line says its emphasis, and a press_hard line carries the plan's question verbatim after "Answer
+explicitly:". Changing how hard a dimension is pressed is therefore a plan change, not a prompt
+change, and the checks prompt stays stable for caching.
+
+**Strong tier, high effort, vision.** `claude-opus-5` at effort high with the images as content
+blocks after the text. The API route allows 300s and the client 240s, because a cold start plus a
+twelve-finding answer with images can take a couple of minutes.
+
+**Still open (for slice 6): which dimensions may be named the weakest part.** The slice 4 brief
+said only ★ dimensions A–E; the contract's worked example names H. For now only K and L are
+ineligible; the rest wait for Shanica's call.

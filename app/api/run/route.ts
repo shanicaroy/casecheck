@@ -8,7 +8,8 @@ import { errorMessage } from "@/src/steps/fetch";
 import { isLevel } from "@/src/lib/levels";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+// The strong-model check with images can take a couple of minutes on a cold start.
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   let url: unknown;

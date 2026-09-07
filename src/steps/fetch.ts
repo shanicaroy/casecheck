@@ -1,13 +1,15 @@
 /**
  * Step 1 of 6 — Fetch.
  *
- * Contract §6.1: "retrieve the URL. Tool call. Capture text and screenshots."
- * This slice captures TEXT only. Screenshots are a later slice.
+ * Contract §6.1 (v0.2): "retrieve the URL on Case Check's own server. Capture
+ * visible text (de-duplicated), every link with its visible text, and
+ * images/media per §7."
  *
  * What this step does:   open the URL in a real headless browser, wait for it
- *                        to settle, and return the visible text plus a few raw
- *                        facts about the page (status, title, word and image
- *                        counts).
+ *                        to settle, and return the visible text, the links,
+ *                        up to `limits.imageCap` page images (those next to
+ *                        thin text first), a list of embedded media, and raw
+ *                        facts about the page.
  * What this step does NOT do: it makes no judgement. It does not decide whether
  *                        the page is a portfolio, whether it is "empty" or
  *                        "images only", or which case study to review. Those are
@@ -21,12 +23,38 @@
  */
 import { cleanText, wordCount } from "../lib/text";
 import { launchBrowser } from "../lib/browser";
+import { limits as defaultLimits, type Limits } from "../../config/limits";
 
 export interface FetchOptions {
   /** Give up on navigation after this long. Default 30s. */
   timeoutMs?: number;
   /** After the DOM is ready, wait up to this long for network activity to stop. Default 8s. Best effort. */
   settleMs?: number;
+  /** Capture images (contract §7 v0.2). Default true. */
+  captureImages?: boolean;
+  limits?: Partial<Limits>;
+}
+
+/** One page image, screenshotted as it renders, so SVG and CSS images count too. */
+export interface CapturedImage {
+  /** 1-based, in page order, as the check step will cite it. */
+  index: number;
+  alt: string;
+  width: number;
+  height: number;
+  /** How far down the page, 0–1. */
+  position: number;
+  /** Words of narrative within ~500px above and below. Low means thin text nearby. */
+  nearbyWords: number;
+  mediaType: "image/jpeg";
+  /** Base64 JPEG. Held in memory for the run only (§9); stripped before anything reaches the browser. */
+  data: string;
+}
+
+/** Embedded media, detected and counted, never analysed (contract §7 v0.2). */
+export interface Embed {
+  kind: "youtube" | "loom" | "figma" | "video" | "iframe" | "other";
+  src: string;
 }
 
 export interface PageLink {
@@ -46,8 +74,18 @@ export interface FetchOk {
   wordCount: number;
   /** Raw signal for the classify step. Counts <img> only; SVG and CSS images are missed. */
   imageCount: number;
+  /**
+   * Words of text outside navigation, header, footer and asides, de-duplicated.
+   * The too-thin floor (§5) is judged on this, not on wordCount.
+   */
+  narrativeWordCount: number;
   /** Every link with visible text, so later steps can name case studies and spot "full case study elsewhere". */
   links: PageLink[];
+  /** Up to limits.imageCap images, thin-text-adjacent first, in page order. */
+  images: CapturedImage[];
+  /** How many images qualified before the cap. */
+  imageCandidates: number;
+  embeds: Embed[];
   fetchedAt: string;
   durationMs: number;
 }
@@ -142,6 +180,11 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
     await page.waitForLoadState("networkidle", { timeout: settleMs }).catch(() => {});
 
     const title = await page.title();
+    const lim = { ...defaultLimits, ...opts.limits };
+
+    // Scroll through the page once so lazy-loaded images render.
+    await autoScroll(page);
+
     const rawText = await page.evaluate(() => document.body?.innerText ?? "");
     const imageCount = await page.evaluate(() => document.images.length);
     const links = await page.evaluate(() => {
@@ -157,7 +200,43 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
       }
       return out;
     });
+
+    // scanPage is sent to the browser as source. Under tsx (dev and tests) the
+    // transpiler wraps its inner helpers in a `__name(fn, "name")` call that
+    // does not exist in the page, so define it there first. Harmless elsewhere.
+    await page.evaluate(() => {
+      (window as unknown as { __name?: (fn: unknown) => unknown }).__name ??= (fn: unknown) => fn;
+    });
+    const scan = await page.evaluate(scanPage, { minW: lim.minImageWidth, minH: lim.minImageHeight });
     const text = cleanText(rawText);
+    const narrativeWordCount = wordCount(cleanText(scan.narrativeText));
+    const embeds = scan.embeds as Embed[];
+
+    const images: CapturedImage[] = [];
+    if (opts.captureImages !== false) {
+      // Thin-text-adjacent first, larger first on ties; then shown in page order.
+      const chosen = [...scan.candidates]
+        .sort((a, b) => a.nearbyWords - b.nearbyWords || b.width * b.height - a.width * a.height)
+        .slice(0, lim.imageCap)
+        .sort((a, b) => a.top - b.top);
+      for (const c of chosen) {
+        try {
+          const buf = await page.locator(`[data-casecheck-img="${c.id}"]`).first().screenshot({ type: "jpeg", quality: 70, timeout: 8_000 });
+          images.push({
+            index: images.length + 1,
+            alt: c.alt,
+            width: Math.round(c.width),
+            height: Math.round(c.height),
+            position: c.position,
+            nearbyWords: c.nearbyWords,
+            mediaType: "image/jpeg",
+            data: buf.toString("base64"),
+          });
+        } catch {
+          // An image that will not screenshot is skipped; the count of candidates still says it was there.
+        }
+      }
+    }
 
     return {
       ok: true,
@@ -168,7 +247,11 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
       text,
       wordCount: wordCount(text),
       imageCount,
+      narrativeWordCount,
       links,
+      images,
+      imageCandidates: scan.candidates.length,
+      embeds,
       fetchedAt: new Date(started).toISOString(),
       durationMs: Date.now() - started,
     };
@@ -190,4 +273,96 @@ function parseHttpUrl(input: string): URL | null {
   } catch {
     return null;
   }
+}
+
+/** Scroll to the bottom in viewport steps and back, so lazy images load. Best effort. */
+async function autoScroll(page: import("playwright-core").Page): Promise<void> {
+  try {
+    await page.evaluate(async () => {
+      const step = window.innerHeight;
+      const max = Math.min(document.body.scrollHeight, 20_000);
+      for (let y = 0; y < max; y += step) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 60));
+      }
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(300);
+  } catch {
+    // Scrolling is a nicety; never fail the fetch over it.
+  }
+}
+
+/**
+ * Runs inside the page. Finds narrative text (outside nav/header/footer/aside),
+ * image candidates with how much text sits near each, and embedded media.
+ * Tags each candidate with data-casecheck-img so it can be screenshotted.
+ */
+function scanPage({ minW, minH }: { minW: number; minH: number }) {
+  const STRIP = 'nav, header, footer, aside, [role="navigation"], [role="banner"], [role="contentinfo"], script, style, noscript';
+  const stripped = (el: Element | null) => !!el && !!el.closest(STRIP);
+  const visible = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+  };
+
+  // Narrative text blocks with their vertical position.
+  const blocks: { top: number; words: number }[] = [];
+  const narrative: string[] = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const t = (node.textContent || "").replace(/\s+/g, " ").trim();
+    const el = node.parentElement;
+    if (!t || !el || stripped(el) || !visible(el)) continue;
+    const words = t.split(" ").length;
+    const rect = (node.parentElement as Element).getBoundingClientRect();
+    blocks.push({ top: rect.top + window.scrollY, words });
+    narrative.push(t);
+  }
+
+  // Image candidates: <img>, inline <svg>, and elements painted with a background image.
+  const docHeight = Math.max(document.body.scrollHeight, 1);
+  const els = new Set<Element>();
+  document.querySelectorAll("img, svg, picture").forEach((e) => els.add(e));
+  document.querySelectorAll("div, section, figure, span, a").forEach((e) => {
+    const bg = getComputedStyle(e).backgroundImage;
+    if (bg && bg !== "none" && /url\(/.test(bg)) els.add(e);
+  });
+
+  const candidates: { id: number; alt: string; width: number; height: number; top: number; position: number; nearbyWords: number }[] = [];
+  let id = 0;
+  for (const el of els) {
+    if (stripped(el) || !visible(el)) continue;
+    if (el.tagName.toLowerCase() === "svg" && el.closest("img, picture")) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < minW || r.height < minH) continue;
+    // Skip an element that merely wraps another candidate.
+    if (Array.from(el.querySelectorAll("img, svg")).some((inner) => inner !== el && inner.getBoundingClientRect().width >= minW)) continue;
+    const top = r.top + window.scrollY;
+    const centre = top + r.height / 2;
+    const nearbyWords = blocks.filter((b) => Math.abs(b.top - centre) <= 500).reduce((n, b) => n + b.words, 0);
+    const figcaption = el.closest("figure")?.querySelector("figcaption")?.textContent?.trim() || "";
+    const alt = (el.getAttribute("alt") || el.getAttribute("aria-label") || el.getAttribute("title") || figcaption).replace(/\s+/g, " ").trim();
+    el.setAttribute("data-casecheck-img", String(id));
+    candidates.push({ id, alt, width: r.width, height: r.height, top, position: Math.min(1, top / docHeight), nearbyWords });
+    id += 1;
+    if (candidates.length >= 60) break;
+  }
+
+  // Embedded media: counted, never analysed.
+  const embeds: { kind: string; src: string }[] = [];
+  const kindOf = (src: string) =>
+    /youtube\.com|youtu\.be/i.test(src) ? "youtube" : /loom\.com/i.test(src) ? "loom" : /figma\.com/i.test(src) ? "figma" : "iframe";
+  document.querySelectorAll("iframe, embed, object").forEach((e) => {
+    const src = e.getAttribute("src") || e.getAttribute("data") || "";
+    if (!src || stripped(e)) return;
+    embeds.push({ kind: kindOf(src), src: src.slice(0, 200) });
+  });
+  document.querySelectorAll("video").forEach((e) => {
+    const src = e.getAttribute("src") || e.querySelector("source")?.getAttribute("src") || "(inline video)";
+    if (!stripped(e)) embeds.push({ kind: "video", src: src.slice(0, 200) });
+  });
+
+  return { narrativeText: narrative.join("\n"), candidates, embeds };
 }

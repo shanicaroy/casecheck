@@ -8,9 +8,9 @@ does and does not do.
 
 ```
 app/            the web page (Next.js): one page plus API routes, no review logic
-config/         which Claude model runs the cheap and strong tiers
+config/         which Claude model runs each tier; the tunable limits (image cap, thin floor)
 content/        every word shown on the page, editable without touching components
-src/steps/      the six agent steps, one file each (so far: fetch, classify, plan)
+src/steps/      the six agent steps, one file each (so far: fetch, classify, plan, checks)
 src/pipeline/   runs the steps in order and streams one event per step
 src/lib/        small helpers with no product logic (text clean-up, browser launch, model call, prompt loading)
 src/cli/        run the pipeline or a step by hand from the terminal

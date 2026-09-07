@@ -157,3 +157,14 @@ table.plan tr:first-child { border-top: 0; }
 code.press_hard { color: var(--fail); font-weight: 600; }
 code.normal { color: var(--ink); }
 code.light { color: var(--muted); }
+
+ol.findings { list-style: none; padding: 0; margin: 0; }
+.finding { padding: 12px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.finding:first-child { border-top: 0; }
+.finding-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; margin-bottom: 6px; }
+.finding-id { font-weight: 600; white-space: nowrap; }
+.finding-name { font-weight: 600; }
+.finding.dropped { opacity: 0.6; }
+code.not_on_this_page { color: #8a5a00; }
+code.dropped { color: var(--muted); text-decoration: line-through; }
+blockquote { margin: 6px 0 8px; padding: 6px 12px; border-left: 3px solid var(--line); color: var(--ink); font-style: italic; }

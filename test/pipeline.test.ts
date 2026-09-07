@@ -8,6 +8,7 @@ import { runPipeline, type RunEvent } from "../src/pipeline/run";
 import type { CallModel } from "../src/lib/model";
 import type { Classification } from "../src/steps/classify";
 import { DIMENSION_IDS, type PlanProposal } from "../src/steps/plan";
+import type { ChecksProposal } from "../src/steps/checks";
 
 const fixture = readFileSync(fileURLToPath(new URL("./fixtures/framer-like.html", import.meta.url)));
 let server: http.Server;
@@ -48,18 +49,49 @@ const proposal: PlanProposal = {
     reason: "test",
   })),
 };
+const checksAnswer: ChecksProposal = {
+  findings: DIMENSION_IDS.map((id) => ({
+    id,
+    verdict: id === "H" ? "weak" : "present",
+    evidence_kind: "quote",
+    quote: id === "H" ? "Weekly event turnout grew by 0%." : "A 7-week solo concept app for neighbour loneliness.",
+    image_index: null,
+    image_note: null,
+    confidence: id === "L" ? "low" : "high",
+    confidence_reason: id === "L" ? "surface only" : null,
+    reasoning: "test",
+    answer_to_question: id === "H" ? "No, it cannot." : null,
+    level_gap: id === "H" ? "Replace the counter with what was actually tested." : null,
+  })),
+  images_read: [],
+  could_not_judge: [],
+};
 // Answers whichever step is asking, judged by the prompt it was given.
 const fake: CallModel = async (call) => ({
-  data: call.schema.parse(/planning step/.test(call.system) ? proposal : singleCase),
+  data: call.schema.parse(/planning step/.test(call.system) ? proposal : /check step/.test(call.system) ? checksAnswer : singleCase),
   usage: { tier: call.tier, model: "fake", inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, durationMs: 1 },
 });
+// The fixture is deliberately thin; lower the floor to let a full run through.
+const lowFloor = { thinFloorWords: 10 };
 
-test("fetch, classify, plan: each announced before it runs, then a run log", async () => {
+test("fetch, classify, plan, checks: each announced before it runs, then a run log", async () => {
   const events: RunEvent[] = [];
-  for await (const e of runPipeline(`${base}/case`, {}, { callModel: fake })) events.push(e);
+  for await (const e of runPipeline(`${base}/case`, {}, { callModel: fake, limits: lowFloor })) events.push(e);
 
   const shape = events.map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
-  assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "run:complete"]);
+  assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "checks:running", "checks:done", "run:complete"]);
+
+  // Image bytes never reach the browser.
+  const fetchEvent = events.find((e) => e.type === "step" && e.step === "fetch" && e.status === "done");
+  assert.ok(fetchEvent && fetchEvent.type === "step" && fetchEvent.step === "fetch" && fetchEvent.status === "done");
+  assert.equal(fetchEvent.result.images.length, 1);
+  assert.equal("data" in fetchEvent.result.images[0], false);
+
+  const checksEvent = events.find((e) => e.type === "step" && e.step === "checks" && e.status === "done");
+  assert.ok(checksEvent && checksEvent.type === "step" && checksEvent.step === "checks" && checksEvent.status === "done");
+  assert.equal(checksEvent.result.findings.length, 12);
+  assert.equal(checksEvent.result.embedCount, 1);
+  assert.match(checksEvent.result.couldNotJudge.join("\n"), /1 embedded video\/prototype not reviewed/);
 
   const planEvent = events.find((e) => e.type === "step" && e.step === "plan" && e.status === "done");
   assert.ok(planEvent && planEvent.type === "step" && planEvent.step === "plan" && planEvent.status === "done");
@@ -71,15 +103,35 @@ test("fetch, classify, plan: each announced before it runs, then a run log", asy
 
   const last = events.at(-1)!;
   assert.equal(last.type, "run");
-  if (last.type !== "run") return;
-  assert.equal(last.log.steps.length, 3);
-  assert.equal(last.log.steps[2].step, "plan");
+  if (last.type !== "run" || last.status === "declined") return;
+  assert.equal(last.log.steps.length, 4);
+  assert.equal(last.log.steps[3].step, "checks");
+  assert.equal(last.log.steps[3].usage?.tier, "strong");
   assert.deepEqual(last.log.selection, { mode: "single_page", title: "Huddle" });
+});
+
+test("below the thin floor the run declines before any strong-model call", async () => {
+  const tiers: string[] = [];
+  const spy: CallModel = async (call) => {
+    tiers.push(call.tier);
+    return fake(call);
+  };
+  const events: RunEvent[] = [];
+  for await (const e of runPipeline(`${base}/case`, {}, { callModel: spy })) events.push(e);
+  const last = events.at(-1)!;
+  assert.equal(last.type, "run");
+  if (last.type !== "run") return;
+  assert.equal(last.status, "declined");
+  if (last.status !== "declined") return;
+  assert.equal(last.declined.reason, "too_thin");
+  assert.equal(last.declined.floor, 150);
+  assert.ok(last.declined.narrativeWordCount < 150);
+  assert.deepEqual(tiers, ["cheap"], "only the classify call may run before the floor");
 });
 
 test("a stated target level passes through to the plan unchanged", async () => {
   const events: RunEvent[] = [];
-  for await (const e of runPipeline(`${base}/case`, { currentLevel: "mid", targetLevel: "senior" }, { callModel: fake })) events.push(e);
+  for await (const e of runPipeline(`${base}/case`, { currentLevel: "mid", targetLevel: "senior" }, { callModel: fake, limits: lowFloor })) events.push(e);
   const planEvent = events.find((e) => e.type === "step" && e.step === "plan" && e.status === "done");
   assert.ok(planEvent && planEvent.type === "step" && planEvent.step === "plan" && planEvent.status === "done");
   assert.deepEqual(

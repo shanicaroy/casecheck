@@ -30,6 +30,8 @@ export interface DimensionMeta {
   star: boolean;
   crossCutting?: boolean;
   alwaysLight?: boolean;
+  /** False for K and L: never the weakest part. */
+  weakestEligible?: boolean;
 }
 export const DIMENSIONS = dimensions as DimensionMeta[];
 
