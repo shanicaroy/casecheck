@@ -98,7 +98,12 @@ test("fetch, classify, plan, checks, verify: each announced before it runs, then
   const events: RunEvent[] = [];
   for await (const e of runPipeline(`${base}/case`, {}, { callModel: fake, limits: lowFloor })) events.push(e);
 
-  const shape = events.map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
+  // Note events carry real sub-activity lines; the step transitions must still arrive in order around them.
+  const notes = events.filter((e) => e.type === "step" && e.status === "note");
+  assert.ok(notes.length >= 5, "each step with something real to say emits a note");
+  assert.ok(notes.some((e) => e.type === "step" && e.status === "note" && /words of narrative/.test(e.line)));
+  assert.ok(notes.some((e) => e.type === "step" && e.status === "note" && /claims made/.test(e.line)));
+  const shape = events.filter((e) => !(e.type === "step" && e.status === "note")).map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
   assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "checks:running", "checks:done", "verify:running", "verify:done", "report:running", "report:done", "run:complete"]);
 
   const reportEvent = events.find((e) => e.type === "step" && e.step === "report" && e.status === "done");
@@ -177,6 +182,6 @@ test("a stated target level passes through to the plan unchanged", async () => {
 test("a dead link stops the run after fetch", async () => {
   const events: RunEvent[] = [];
   for await (const e of runPipeline("http://127.0.0.1:9/", {}, { callModel: fake })) events.push(e);
-  const shape = events.map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
+  const shape = events.filter((e) => !(e.type === "step" && e.status === "note")).map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
   assert.deepEqual(shape, ["fetch:running", "fetch:failed", "run:stopped"]);
 });
