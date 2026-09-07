@@ -124,3 +124,35 @@ elsewhere" link the contract warns about can be detected rather than guessed.
 **Steps stream to the page as newline-delimited JSON events.** One event per step transition,
 written as it happens, so the step list on the page updates live and there is never a blank
 spinner (contract §7). The same event stream is what the terminal command prints.
+
+## 2026-09-07 · Contract v0.2 read; step 3, Plan
+
+**Classify inventory widened to the nine parts of contract §7 v0.2, and the seniority read now
+carries its own confidence.** Done in this slice rather than slice 4 because the plan step reads
+the inventory: constraints, tradeoffs and role clarity each drive a dimension's emphasis.
+
+**Levels resolve in code, in one place (`src/lib/levels.ts`).** Stated levels win. Otherwise the
+current level is the classify step's seniority read; if that read was unclear, junior is assumed
+(the audience, §2) and written down. The target defaults to one step up and that default is
+written down too. The pipeline and the API already accept `currentLevel` and `targetLevel`, so the
+intake fields (§14) can be added to the page later without touching any step.
+
+**The plan is data step 4 consumes: twelve dimensions, A–L in order, each with an emphasis
+(press_hard / normal / light), a reason, and, when press_hard, the specific question to answer for
+this case.** The model proposes it from `prompts/plan.md` with the rubric appended; code enforces
+what may not drift: all twelve present and in order, L always light (§8 scope note), no question no
+press (press_hard without a question is downgraded to normal). Every override is recorded as an
+adjustment for the owner view.
+
+**Emphasis heuristics live in the prompt, not in code.** How a revamp presses A, how a present
+research section presses C on "which decision did it change", how the target level shifts the bar
+(toward mid: thinking and iteration; toward senior: tradeoffs, constraints, ownership) are rubric
+judgements and belong in the file Shanica edits. Code owns only the invariants above.
+
+**Cheap tier at medium effort for the plan.** Classification was low effort; the plan is a
+judgement about where to look and is worth a little more, and it is still a fraction of the cost
+of the check step.
+
+**Runs with nothing to review stop after classify.** Not a portfolio, too little content, or no
+case study selected: the pipeline stops before planning. The designed refusal message for each of
+those cases (§5, §7 error states) is a later slice.

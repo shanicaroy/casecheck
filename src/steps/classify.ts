@@ -38,12 +38,18 @@ export const ClassificationSchema = z.object({
     }),
   ),
   problem_type: z.enum(["revamp", "zero_to_one", "unclear"]),
+  /** An estimate offered to help, never a verdict (contract §2, §4.7). Always carries its own confidence. */
   seniority: z.enum(["junior", "mid", "senior", "unclear"]),
+  seniority_confidence: z.enum(["high", "medium", "low"]),
   case_type: z.array(z.enum(["product_design", "research_only", "concept", "shipped", "student_project", "other"])),
+  /** Contract §7 v0.2 "Inventory": the nine narrative parts the rubric asks about. */
   inventory: z.object({
     problem: InventoryItem,
     research: InventoryItem,
-    decisions: InventoryItem,
+    design_decisions: InventoryItem,
+    tradeoffs: InventoryItem,
+    constraints: InventoryItem,
+    role_clarity: InventoryItem,
     iteration: InventoryItem,
     outcome: InventoryItem,
     learnings: InventoryItem,

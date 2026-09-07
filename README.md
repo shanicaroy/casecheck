@@ -10,7 +10,7 @@ does and does not do.
 app/            the web page (Next.js): one page plus API routes, no review logic
 config/         which Claude model runs the cheap and strong tiers
 content/        every word shown on the page, editable without touching components
-src/steps/      the six agent steps, one file each (so far: fetch, classify)
+src/steps/      the six agent steps, one file each (so far: fetch, classify, plan)
 src/pipeline/   runs the steps in order and streams one event per step
 src/lib/        small helpers with no product logic (text clean-up, browser launch, model call, prompt loading)
 src/cli/        run the pipeline or a step by hand from the terminal
@@ -27,7 +27,7 @@ npm install
 npx playwright install chromium   # once, downloads the headless browser for local use
 npm run dev                       # the page, at http://localhost:3000
 npm run fetch -- https://someone.framer.website/case-study-01   # step 1 only
-npm run check -- https://someone.framer.website/case-study-01   # the pipeline, needs ANTHROPIC_API_KEY in .env.local
+npm run check -- https://someone.framer.website/case-study-01 --target senior   # the pipeline, needs ANTHROPIC_API_KEY in .env.local
 npm test
 ```
 

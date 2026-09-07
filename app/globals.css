@@ -148,3 +148,12 @@ code.weak { color: #8a5a00; }
 code.missing { color: var(--fail); }
 ul.options { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 ul.options button { background: var(--panel); color: var(--ink); border: 1px solid var(--ink); text-align: left; }
+
+table.plan { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.plan th { text-align: left; font-weight: 600; padding: 6px 8px 6px 0; width: 36px; vertical-align: top; white-space: nowrap; }
+table.plan td { padding: 6px 8px 6px 0; vertical-align: top; }
+table.plan tr { border-top: 1px solid var(--line); }
+table.plan tr:first-child { border-top: 0; }
+code.press_hard { color: var(--fail); font-weight: 600; }
+code.normal { color: var(--ink); }
+code.light { color: var(--muted); }

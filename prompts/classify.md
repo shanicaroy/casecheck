@@ -14,10 +14,20 @@ Answer these questions, strictly from what is on the page:
 
 3. For the case study that would be reviewed (the page itself if single_case_study; otherwise leave the fields at "unclear"):
    - problem_type: revamp (an existing product was changed) or zero_to_one (something new was made). This decides which branch of the framework's Problem framing check applies.
-   - seniority: does the work read as junior, mid, or senior? Judge from scope, ownership, and depth of reasoning, not from job titles.
+   - seniority: does the work read as junior, mid, or senior? Judge from scope, ownership, and depth of reasoning, not from job titles. This is an estimate to help the designer aim, never a verdict on them, so also give seniority_confidence and set it low when the page gives you little to go on.
    - case_type: any that apply from product_design, research_only, concept, shipped, student_project, other.
 
-4. Structural inventory. For each of problem, research, decisions, iteration, outcome, learnings: is it present, weak, or missing on this page? Weak means a section exists but says little. Give one verbatim quote from the page as evidence for present or weak; give null for missing.
+4. Structural inventory. For each of these nine parts, is it present, weak, or missing on this page? Weak means it is there but says little.
+   - problem: a real problem, in the designer's words, with its origin
+   - research: research activity and what it found
+   - design_decisions: decisions named as decisions
+   - tradeoffs: an alternative that was rejected, and why
+   - constraints: real constraints (time, technical, business, stakeholders) or pushback named
+   - role_clarity: what this designer did versus the team
+   - iteration: what changed between versions and why
+   - outcome: a stated result, or an honest statement that the outcome is not known
+   - learnings: what the designer learned, specific to this project
+   Give one verbatim quote from the page as evidence for present or weak; give null for missing.
 
 5. Links that appear to lead to a fuller version of a case study elsewhere (Behance, Notion, a PDF, "view full case study", "read more"). Later steps must not claim anything about content behind those links, so list them.
 

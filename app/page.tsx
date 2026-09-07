@@ -9,6 +9,7 @@ import { useState, type FormEvent } from "react";
 import { copy } from "@/content/copy";
 import type { FetchResult } from "@/src/steps/fetch";
 import type { ClassifyResult } from "@/src/steps/classify";
+import type { PlanResult } from "@/src/steps/plan";
 import type { RunEvent, RunLog } from "@/src/pipeline/run";
 import { STEP_ORDER, type StepName } from "@/src/pipeline/steps";
 
@@ -18,16 +19,17 @@ interface RunState {
   steps: Record<StepName, StepState>;
   fetch: FetchResult | null;
   classify: ClassifyResult | null;
+  plan: PlanResult | null;
   options: { title: string; url: string | null }[] | null;
   log: RunLog | null;
   error: string | null;
 }
 
-const BUILT: StepName[] = ["fetch", "classify"];
+const BUILT: StepName[] = ["fetch", "classify", "plan"];
 
 function freshState(): RunState {
   const steps = Object.fromEntries(STEP_ORDER.map((s) => [s, BUILT.includes(s) ? "pending" : "not_built"])) as Record<StepName, StepState>;
-  return { steps, fetch: null, classify: null, options: null, log: null, error: null };
+  return { steps, fetch: null, classify: null, plan: null, options: null, log: null, error: null };
 }
 
 export default function Page() {
@@ -174,8 +176,8 @@ export default function Page() {
               <dt>Page kind</dt><dd><code>{c.page_kind}</code> · {c.page_kind_reason}</dd>
               <dt>Case studies</dt><dd>{c.case_studies.length === 0 ? "none found" : c.case_studies.map((cs) => cs.title).join(" · ")}</dd>
               <dt>Problem type</dt><dd><code>{c.problem_type}</code></dd>
-              <dt>Seniority</dt><dd><code>{c.seniority}</code></dd>
-              <dt>Case type</dt><dd>{c.case_type.map((t) => <code key={t}>{t}</code>)}</dd>
+              <dt>Seniority</dt><dd>{copy.plan.readsAs} ~<code>{c.seniority}</code> · confidence <code>{c.seniority_confidence}</code></dd>
+              <dt>Case type</dt><dd>{c.case_type.length ? c.case_type.join(", ") : "unclear"}</dd>
               <dt>Confidence</dt><dd><code>{c.confidence}</code>{c.notes ? ` · ${c.notes}` : ""}</dd>
               <dt>Model</dt><dd>{run.classify.usage.model} · {run.classify.usage.inputTokens} in / {run.classify.usage.outputTokens} out · {run.classify.usage.durationMs} ms</dd>
             </dl>
@@ -209,6 +211,44 @@ export default function Page() {
         );
       })()}
 
+      {run?.plan && !run.plan.ok && (
+        <section className="panel fail">
+          <h2>{copy.plan.failHeading}</h2>
+          <dl className="facts">
+            <dt>Reason</dt><dd><code>{run.plan.reason}</code></dd>
+            <dt>Detail</dt><dd>{run.plan.detail}</dd>
+          </dl>
+        </section>
+      )}
+
+      {run?.plan && run.plan.ok && (() => {
+        const p = run.plan.plan;
+        return (
+          <section className="panel">
+            <h2>{copy.plan.heading}</h2>
+            <p>{p.summary}</p>
+            <p className="muted">
+              {copy.plan.readsAs} ~{p.levels.current} ({p.levels.currentSource}) · {copy.plan.aimingFor} {p.levels.target} ({p.levels.targetSource === "stated" ? copy.plan.stated : copy.plan.assumed})
+            </p>
+            <table className="plan">
+              <tbody>
+                {p.dimensions.map((d) => (
+                  <tr key={d.id} className={d.emphasis}>
+                    <th>{d.id}{d.star ? " ★" : ""}</th>
+                    <td>{d.name}</td>
+                    <td><code className={d.emphasis}>{copy.plan.emphasis[d.emphasis]}</code></td>
+                    <td>{d.question ? <strong>{d.question}</strong> : <span className="muted">{d.reason}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {run.plan.adjustments.length > 0 && (
+              <ul className="muted">{run.plan.adjustments.map((a, i) => <li key={i}>{a}</li>)}</ul>
+            )}
+          </section>
+        );
+      })()}
+
       <footer><p className="muted">{copy.limits}</p></footer>
     </main>
   );
@@ -237,4 +277,6 @@ function apply(state: RunState, event: RunEvent) {
   if (event.step === "classify" && (event.status === "done" || event.status === "needs_choice")) state.classify = event.result;
   if (event.step === "classify" && event.status === "needs_choice") state.options = event.options;
   if (event.step === "classify" && event.status === "failed") state.classify = event.error;
+  if (event.step === "plan" && event.status === "done") state.plan = event.result;
+  if (event.step === "plan" && event.status === "failed") state.plan = event.error;
 }

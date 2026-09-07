@@ -4,12 +4,14 @@
  * (contract §7: steps stream as they complete, no blank spinner). The CLI
  * prints them. Neither knows anything about the steps themselves.
  *
- * Built so far: fetch → classify. Later slices append steps here.
+ * Built so far: fetch → classify → plan. Later slices append steps here.
  */
 import { randomUUID } from "node:crypto";
 import { fetchPage, type FetchOk, type FetchFail } from "../steps/fetch";
 import { classify, type ClassifyOk, type ClassifyFail } from "../steps/classify";
+import { plan as planChecks, type PlanOk, type PlanFail } from "../steps/plan";
 import type { CallModel, ModelUsage } from "../lib/model";
+import type { LevelInputs } from "../lib/levels";
 
 import type { StepName } from "./steps";
 export type { StepName } from "./steps";
@@ -38,13 +40,17 @@ export type RunEvent =
   | { type: "step"; step: "classify"; status: "done"; result: ClassifyOk; durationMs: number }
   | { type: "step"; step: "classify"; status: "needs_choice"; result: ClassifyOk; options: { title: string; url: string | null }[]; durationMs: number }
   | { type: "step"; step: "classify"; status: "failed"; error: ClassifyFail; durationMs: number }
+  | { type: "step"; step: "plan"; status: "done"; result: PlanOk; durationMs: number }
+  | { type: "step"; step: "plan"; status: "failed"; error: PlanFail; durationMs: number }
   | { type: "run"; status: "stopped" | "complete"; log: RunLog };
+
+export interface RunOptions extends LevelInputs {}
 
 export interface RunDeps {
   callModel?: CallModel;
 }
 
-export async function* runPipeline(url: string, deps: RunDeps = {}): AsyncGenerator<RunEvent> {
+export async function* runPipeline(url: string, options: RunOptions = {}, deps: RunDeps = {}): AsyncGenerator<RunEvent> {
   const started = Date.now();
   const log: RunLog = {
     runId: randomUUID(),
@@ -104,6 +110,27 @@ export async function* runPipeline(url: string, deps: RunDeps = {}): AsyncGenera
   };
   yield { type: "step", step: "classify", status: "done", result: classified, durationMs: ms2 };
 
-  // Steps 3–6 arrive in later slices.
+  // Nothing to review (not a portfolio, too little content): stop here.
+  // The designed refusal message for this case is a later slice.
+  if (!chosen) {
+    yield finish("stopped");
+    return;
+  }
+
+  // 3. Plan — shown before the checks run (contract §7).
+  yield { type: "step", step: "plan", status: "running" };
+  const t3 = Date.now();
+  const planned = await planChecks(c, { currentLevel: options.currentLevel, targetLevel: options.targetLevel }, { callModel: deps.callModel });
+  const ms3 = Date.now() - t3;
+  if (!planned.ok) {
+    log.steps.push({ step: "plan", durationMs: ms3 });
+    yield { type: "step", step: "plan", status: "failed", error: planned, durationMs: ms3 };
+    yield finish("stopped");
+    return;
+  }
+  log.steps.push({ step: "plan", durationMs: ms3, usage: planned.usage });
+  yield { type: "step", step: "plan", status: "done", result: planned, durationMs: ms3 };
+
+  // Steps 4–6 arrive in later slices.
   yield finish("complete");
 }

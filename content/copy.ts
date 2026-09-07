@@ -19,7 +19,7 @@ export const copy = {
 
   // Honest build status. Remove when the full six-step flow is live.
   buildStatus:
-    "Early build: right now this page runs steps 1 and 2 of 6 (fetch and classify) and shows you exactly what the tool sees. The review itself is not built yet.",
+    "Early build: right now this page runs steps 1 to 3 of 6 (fetch, classify, plan) and shows you exactly what the tool sees and where it will look hardest. The review itself is not built yet.",
 
   form: {
     label: "Portfolio link",
@@ -35,6 +35,16 @@ export const copy = {
     verify: "Self-verify every claim",
     report: "Report",
     notBuilt: "not built yet",
+  },
+
+  plan: {
+    heading: "Where the review will look hardest",
+    readsAs: "reads as",
+    aimingFor: "aiming for",
+    assumed: "assumed",
+    stated: "stated",
+    emphasis: { press_hard: "press hard", normal: "normal", light: "light" },
+    failHeading: "Couldn't plan the checks",
   },
 
   classify: {
