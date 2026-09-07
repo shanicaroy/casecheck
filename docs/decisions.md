@@ -238,3 +238,41 @@ hallucination metric should see it. A dimension the model never returned is not 
 element type has no status field and a non-null evidence, and `dropped`. The report step is written
 against `SurvivingFinding` only. The dropped list, the quote each rested on, and the per-finding
 trail go to the owner view; the designer sees the one sentence of §14.8.
+
+## 2026-09-07 · Step 6, Report: choose in code, write with the model
+
+**H is ★ and eligible to be the weakest part; eligibility equals the ★ set (A–E, H).** Directed by
+Shanica on 7 September: worked example 1 names H as Huddle's weakest part. The v0.2 contract copy
+in this repo's history did not star H; `rubric/rubric.md` now does, with a note, pending the
+updated contract. F, G, I, J stay ineligible along with K and L.
+
+**The weakest part is chosen by a fixed rule in code, before any model writes a word.** In order:
+a trust problem on H outranks any ordinary gap; then missing over weak over not-on-this-page; then
+the plan's emphasis; then confidence. Only when all four tie does the model choose, and only among
+the tied set, which the output schema itself restricts it to. Every ranking input, score and
+exclusion reason is returned for the owner view. Reason: "prioritised" is the eval dimension
+most tied to Shanica's sealed verdict; a rule that can be read and edited is one that can be
+tuned against that verdict, and a model's silent ranking cannot.
+
+**A trust problem is a flag the check step raises, only on H, only with a weak or missing verdict,
+and only with the evidence quoted.** Code clears it anywhere else. The ranking reads the flag; it
+does not try to detect fabrication itself.
+
+**`not_on_this_page` ranks below `weak`.** A gap that may live behind a link the tool did not read
+is a lower-confidence claim about this page than a gap the page itself shows.
+
+**A strong case study gets no invented weakness.** When no ★ dimension is weak or missing among
+the verified findings, the report names no weakest part, offers no fix, and the model is not
+called. The eval's strong slice depends on this.
+
+**The model only ever sees surviving findings.** `buildReport` takes `VerifyOk.surviving` by type.
+The model writes the prose (plain-words name, why weak, why it outranks, the fix, what's missing
+toward the target, secondary notes); code assembles inventory, could-not-judge, assumptions and
+the verification sentence from data that already exists. Citations the model gives for the fix and
+the target sentence are checked against surviving weak findings; a target sentence with no
+surviving citation is replaced with the weakest finding's own level gap (§4.2, no generic advice).
+
+**Report runs on the strong tier.** The contract's cost-routing row does not name the report
+step. The fix and the framing are what the designer acts on, and the tone rules of §3 are the
+hardest to hold, so it gets the strong model. One call, ~6k output tokens. Change the tier in
+`src/steps/report.ts` if the eval shows the cheap tier holds.

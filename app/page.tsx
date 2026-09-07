@@ -12,6 +12,7 @@ import type { ClassifyResult } from "@/src/steps/classify";
 import type { PlanResult } from "@/src/steps/plan";
 import type { ChecksResult } from "@/src/steps/checks";
 import type { VerifyResult } from "@/src/steps/verify";
+import type { ReportResult } from "@/src/steps/report";
 import type { RunEvent, RunLog, FetchOkPublic, Declined } from "@/src/pipeline/run";
 import { STEP_ORDER, type StepName } from "@/src/pipeline/steps";
 
@@ -24,17 +25,18 @@ interface RunState {
   plan: PlanResult | null;
   checks: ChecksResult | null;
   verify: VerifyResult | null;
+  report: ReportResult | null;
   declined: Declined | null;
   options: { title: string; url: string | null }[] | null;
   log: RunLog | null;
   error: string | null;
 }
 
-const BUILT: StepName[] = ["fetch", "classify", "plan", "checks", "verify"];
+const BUILT: StepName[] = ["fetch", "classify", "plan", "checks", "verify", "report"];
 
 function freshState(): RunState {
   const steps = Object.fromEntries(STEP_ORDER.map((s) => [s, BUILT.includes(s) ? "pending" : "not_built"])) as Record<StepName, StepState>;
-  return { steps, fetch: null, classify: null, plan: null, checks: null, verify: null, declined: null, options: null, log: null, error: null };
+  return { steps, fetch: null, classify: null, plan: null, checks: null, verify: null, report: null, declined: null, options: null, log: null, error: null };
 }
 
 export default function Page() {
@@ -117,6 +119,78 @@ export default function Page() {
       {run?.error && (
         <section className="panel fail"><h2>{copy.result.failHeading}</h2><p>{run.error}</p></section>
       )}
+
+      {run?.report && !run.report.ok && (
+        <section className="panel fail">
+          <h2>{copy.report.failHeading}</h2>
+          <dl className="facts"><dt>Reason</dt><dd><code>{run.report.reason}</code></dd><dt>Detail</dt><dd>{run.report.detail}</dd></dl>
+        </section>
+      )}
+
+      {run?.report && run.report.ok && (() => {
+        const r = run.report.report;
+        const w = r.weakest_part;
+        return (
+          <section className="panel report">
+            <h2>{copy.report.weakest}</h2>
+            {w ? (
+              <>
+                <p className="lead">{w.plain_words} <span className="muted">({w.id} {w.name}{w.trust_issue ? `, ${copy.report.trustProblem}` : ""} · confidence {w.confidence})</span></p>
+                {w.evidence.kind === "quote" ? <blockquote>“{w.evidence.text}”</blockquote> : <p className="muted">{copy.report.restsOn}: image {w.evidence.index}, {w.evidence.note}</p>}
+                <p><strong>{copy.report.whyWeak}:</strong> {w.why_weak}</p>
+                <p><strong>{copy.report.whyOutranks}:</strong> {w.why_it_outranks}</p>
+              </>
+            ) : (
+              <p>{copy.report.noWeakest}</p>
+            )}
+
+            <h2>{copy.report.fix}</h2>
+            <p>{r.one_fix ? r.one_fix.text : copy.report.nothingMissing}</p>
+
+            <h2>{copy.report.readsAs} ~{r.reads_as.level} <span className="muted">(confidence {r.reads_as.confidence}) · {copy.report.aimingFor} {r.reads_as.target}</span></h2>
+            <p>{copy.report.missingToward.replace("{target}", r.reads_as.target)}: {r.reads_as.what_is_missing || copy.report.nothingMissing}</p>
+
+            <h2>{copy.report.inventory}</h2>
+            <table className="inventory"><tbody>
+              {r.inventory.map((i) => (
+                <tr key={i.part}><th>{i.part}</th><td><code className={i.status}>{i.status}</code></td><td className="muted">{i.evidence ? `“${i.evidence}”` : ""}</td></tr>
+              ))}
+            </tbody></table>
+
+            {r.secondary.length > 0 && (
+              <>
+                <h2>{copy.report.secondary}</h2>
+                <ul className="muted">{r.secondary.map((s2) => <li key={s2.id}><strong>{s2.name}</strong> ({s2.verdict}): {s2.note}</li>)}</ul>
+              </>
+            )}
+
+            <h2>{copy.report.couldNotJudge}</h2>
+            <ul>{r.could_not_judge.map((t, i) => <li key={i}>{t}</li>)}</ul>
+
+            <h2>{copy.report.assumptions}</h2>
+            {r.assumptions.length ? <ul>{r.assumptions.map((a, i) => <li key={i}>{a}</li>)}</ul> : <p className="muted">(none)</p>}
+
+            <h2>{copy.report.howSure}</h2>
+            <p>{r.verification.sentence}</p>
+
+            <details>
+              <summary>{copy.report.ranking}</summary>
+              <table className="plan"><tbody>
+                {run.report.choice.ranking.map((row) => (
+                  <tr key={row.id}>
+                    <th>{row.id}</th>
+                    <td>{row.name}</td>
+                    <td><code>{row.verdict}</code> · {row.emphasis} · {row.confidence}{row.trustIssue ? " · trust" : ""}</td>
+                    <td className="muted">{row.candidate ? `score ${row.score.join(".")}` : row.excludedBecause}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+              {run.report.tieBrokenBy && <p className="muted">Tie broken by the model: {run.report.tieBrokenBy}</p>}
+              {run.report.adjustments.length > 0 && <ul className="muted">{run.report.adjustments.map((a, i) => <li key={i}>{a}</li>)}</ul>}
+            </details>
+          </section>
+        );
+      })()}
 
       {run?.fetch && !run.fetch.ok && (
         <section className="panel fail">
@@ -399,4 +473,6 @@ function apply(state: RunState, event: RunEvent) {
   if (event.step === "checks" && event.status === "failed") state.checks = event.error;
   if (event.step === "verify" && event.status === "done") state.verify = event.result;
   if (event.step === "verify" && event.status === "failed") state.verify = event.error;
+  if (event.step === "report" && event.status === "done") state.report = event.result;
+  if (event.step === "report" && event.status === "failed") state.report = event.error;
 }

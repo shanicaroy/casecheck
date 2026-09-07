@@ -168,3 +168,6 @@ ol.findings { list-style: none; padding: 0; margin: 0; }
 code.not_on_this_page { color: #8a5a00; }
 code.dropped { color: var(--muted); text-decoration: line-through; }
 blockquote { margin: 6px 0 8px; padding: 6px 12px; border-left: 3px solid var(--line); color: var(--ink); font-style: italic; }
+
+.panel.report { border-color: var(--ink); }
+.panel.report .lead { font-size: 18px; font-weight: 600; margin-bottom: 8px; }

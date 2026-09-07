@@ -41,6 +41,8 @@ export const ChecksProposalSchema = z.object({
       reasoning: z.string(),
       answer_to_question: z.string().nullable(),
       level_gap: z.string().nullable(),
+      /** H only: the outcome is fabricated, inflated or unverifiable — a trust problem, not a gap. */
+      trust_issue: z.boolean(),
     }),
   ),
   images_read: z.array(
@@ -75,8 +77,10 @@ export interface Finding {
   answerToQuestion: string | null;
   /** What this finding would need to read as the target level. Tied to this finding by construction (§4.2). */
   levelGap: string | null;
-  /** From rubric/dimensions.json: false for K (cross-cutting) and L (§8 scope note). */
+  /** From rubric/dimensions.json: true exactly for the ★ dimensions. */
   eligibleAsWeakest: boolean;
+  /** Only ever true on H: a stated outcome that cannot be true or cannot be verified (worked example 1). */
+  trustIssue: boolean;
   status: "kept" | "dropped";
   dropReason: string | null;
 }
@@ -172,7 +176,7 @@ export function normalise(proposal: ChecksProposal, plan: Plan, imageCount: numb
     const p = byId.get(meta.id);
     if (!p) {
       adjustments.push(`Finding ${meta.id} was not returned by the model; recorded as dropped.`);
-      return { ...base, verdict: "missing", evidence: null, confidence: "low", confidenceReason: null, reasoning: "", answerToQuestion: null, levelGap: null, status: "dropped", dropReason: "The model returned no finding for this dimension." };
+      return { ...base, verdict: "missing", evidence: null, confidence: "low", confidenceReason: null, reasoning: "", answerToQuestion: null, levelGap: null, trustIssue: false, status: "dropped", dropReason: "The model returned no finding for this dimension." };
     }
 
     let evidence: Evidence | null = null;
@@ -209,6 +213,16 @@ export function normalise(proposal: ChecksProposal, plan: Plan, imageCount: numb
       confidenceReason = "No reason given.";
     }
 
+    let trustIssue = p.trust_issue;
+    if (trustIssue && meta.id !== "H") {
+      adjustments.push(`Finding ${meta.id} raised trust_issue, which only H may raise; cleared.`);
+      trustIssue = false;
+    }
+    if (trustIssue && verdict === "present") {
+      adjustments.push(`Finding H raised trust_issue on a present verdict; cleared.`);
+      trustIssue = false;
+    }
+
     if (dropReason) adjustments.push(`Finding ${meta.id} dropped: ${dropReason}`);
 
     return {
@@ -220,6 +234,7 @@ export function normalise(proposal: ChecksProposal, plan: Plan, imageCount: numb
       reasoning: p.reasoning,
       answerToQuestion: planned.emphasis === "press_hard" ? p.answer_to_question?.trim() || null : null,
       levelGap: verdict === "present" ? null : p.level_gap?.trim() || null,
+      trustIssue,
       status: dropReason ? "dropped" : "kept",
       dropReason,
     };

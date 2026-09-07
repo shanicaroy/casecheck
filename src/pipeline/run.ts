@@ -4,7 +4,7 @@
  * (contract §7: steps stream as they complete, no blank spinner). The CLI
  * prints them. Neither knows anything about the steps themselves.
  *
- * Built so far: fetch → classify → plan → checks → verify. Slice 6 appends the report.
+ * All six steps: fetch → classify → plan → checks → verify → report.
  *
  * Two boundaries live here, not in any step:
  *  - the too-thin floor (contract §5): below limits.thinFloorWords of real
@@ -19,6 +19,7 @@ import { classify, type ClassifyOk, type ClassifyFail } from "../steps/classify"
 import { plan as planChecks, type PlanOk, type PlanFail } from "../steps/plan";
 import { runChecks, type ChecksOk, type ChecksFail } from "../steps/checks";
 import { verify, type VerifyOk, type VerifyFail } from "../steps/verify";
+import { buildReport, type ReportOk, type ReportFail } from "../steps/report";
 import type { CallModel, ModelUsage } from "../lib/model";
 import type { LevelInputs } from "../lib/levels";
 import { limits as defaultLimits, type Limits } from "../../config/limits";
@@ -76,6 +77,8 @@ export type RunEvent =
   | { type: "step"; step: "checks"; status: "failed"; error: ChecksFail; durationMs: number }
   | { type: "step"; step: "verify"; status: "done"; result: VerifyOk; durationMs: number }
   | { type: "step"; step: "verify"; status: "failed"; error: VerifyFail; durationMs: number }
+  | { type: "step"; step: "report"; status: "done"; result: ReportOk; durationMs: number }
+  | { type: "step"; step: "report"; status: "failed"; error: ReportFail; durationMs: number }
   | { type: "run"; status: "declined"; declined: Declined; log: RunLog }
   | { type: "run"; status: "stopped" | "complete"; log: RunLog };
 
@@ -251,6 +254,22 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
   log.claims = { made: verified.claimsMade, surviving: verified.claimsSurviving };
   yield { type: "step", step: "verify", status: "done", result: verified, durationMs: ms5 };
 
-  // Step 6 arrives in the next slice.
+  // 6. Report — from surviving findings only.
+  yield { type: "step", step: "report", status: "running" };
+  const t6 = Date.now();
+  const pipelineAssumptions: string[] = [];
+  if (log.followedTo) pipelineAssumptions.push(`The link was a portfolio page with one case study, so the review ran on that case study's page: ${log.followedTo}.`);
+  if (log.selection?.mode === "assumed_only_one") pipelineAssumptions.push("Only one case study was found, so it was reviewed without asking.");
+  const reported = await buildReport({ verified, checks: checked, classification: c, plan: planned.plan, pipelineAssumptions }, { callModel: deps.callModel });
+  const ms6 = Date.now() - t6;
+  if (!reported.ok) {
+    log.steps.push({ step: "report", durationMs: ms6 });
+    yield { type: "step", step: "report", status: "failed", error: reported, durationMs: ms6 };
+    yield finish("stopped");
+    return;
+  }
+  log.steps.push({ step: "report", durationMs: ms6, usage: reported.usage ?? undefined });
+  yield { type: "step", step: "report", status: "done", result: reported, durationMs: ms6 };
+
   yield finish("complete");
 }

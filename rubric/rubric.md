@@ -1,6 +1,8 @@
 # The rubric — UXPective case-study storytelling framework
 
-Copied verbatim from the product contract, §8. This file is data: the app reads it, never rewrites it.
+Copied verbatim from the product contract, §8, with one owner-directed change on 7 September 2026: H is
+marked ★ (eligible to be the weakest part), which worked example 1 depends on. This file is data: the app
+reads it, never rewrites it.
 Edit it here to change what the tool checks. Dimensions marked ★ are the only ones that may be named the weakest part.
 
 The tool checks each dimension in order. Each check returns: present / weak / missing, one piece of evidence from the portfolio, and a confidence level.
@@ -35,7 +37,7 @@ Fail signals: the solution simply appears; no alternative is ever mentioned; dec
 Is it clear what *this* designer did, versus the team? Especially for group or agency projects.
 Fail signals: "we" throughout with no "I"; ownership implied but never stated; role listed as "UX/UI designer" with no specifics.
 
-**H. Outcome and honesty**
+**H. Outcome and honesty ★**
 Is there a stated result, and is it honest? A real metric, a qualitative outcome, a shipped state, or a clear statement that the outcome isn't known yet (student project, unshipped) are all acceptable. Inflated or unverifiable claims are not.
 Fail signals: no outcome at all; suspiciously round success metrics with no source; "increased engagement by 300%" with nothing behind it.
 

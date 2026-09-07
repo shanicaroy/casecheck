@@ -33,31 +33,31 @@
     "id": "F",
     "name": "Decisions and tradeoffs",
     "star": false,
-    "weakestEligible": true
+    "weakestEligible": false
   },
   {
     "id": "G",
     "name": "Role clarity",
     "star": false,
-    "weakestEligible": true
+    "weakestEligible": false
   },
   {
     "id": "H",
     "name": "Outcome and honesty",
-    "star": false,
+    "star": true,
     "weakestEligible": true
   },
   {
     "id": "I",
     "name": "Learnings and insights",
     "star": false,
-    "weakestEligible": true
+    "weakestEligible": false
   },
   {
     "id": "J",
     "name": "Editing and readability",
     "star": false,
-    "weakestEligible": true
+    "weakestEligible": false
   },
   {
     "id": "K",

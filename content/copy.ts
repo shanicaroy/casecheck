@@ -19,7 +19,7 @@ export const copy = {
 
   // Honest build status. Remove when the full six-step flow is live.
   buildStatus:
-    "Early build: right now this page runs steps 1 to 5 of 6 (fetch, classify, plan, checks, self-verify) and shows the verified findings. The final review is not built yet.",
+    "Early build: all six steps run. The review below is shown in its raw form; the designed layout comes next.",
 
   form: {
     label: "Portfolio link",
@@ -43,6 +43,29 @@ export const copy = {
     too_thin:
       "This page has too little case-study narrative for a fair read. Under the floor, the tool would be guessing, and a guess is worse than no review. If the full case study lives on another page, paste that link instead. If the story is in images, add the narrative as text so it can be read.",
     detailLabel: "What was found",
+  },
+
+  // Contract §14: the review, in this order.
+  report: {
+    weakest: "The weakest part",
+    restsOn: "Rests on",
+    whyWeak: "Why it's weak",
+    whyOutranks: "Why it outranks the others",
+    trustProblem: "a trust problem",
+    noWeakest: "No weak part was found among the storytelling dimensions the tool can judge.",
+    fix: "The one fix",
+    fixFrame: "To read as {target}",
+    readsAs: "Reads as",
+    aimingFor: "aiming for",
+    missingToward: "To read as {target}, this is what's missing",
+    nothingMissing: "Nothing on this page was found missing toward that level.",
+    inventory: "What's on the page",
+    secondary: "Also, smaller",
+    couldNotJudge: "Couldn't judge",
+    assumptions: "Assumptions the tool made",
+    howSure: "How sure it is",
+    ranking: "Ranking inputs (owner view)",
+    failHeading: "Couldn't write the review",
   },
 
   // Contract §14.8: the claims-made vs claims-surviving count, in one sentence.

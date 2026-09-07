@@ -29,7 +29,7 @@ function finding(id: Finding["id"], over: Partial<Finding> = {}): Finding {
     id, name: `Dim ${id}`, star: false, emphasis: "normal", question: null, verdict: "weak",
     evidence: { kind: "quote", text: "A 7-week solo concept app for neighbour loneliness." },
     confidence: "high", confidenceReason: null, reasoning: "r", answerToQuestion: null, levelGap: null,
-    eligibleAsWeakest: id !== "K" && id !== "L", status: "kept", dropReason: null, ...over,
+    eligibleAsWeakest: "ABCDEH".includes(id), trustIssue: false, status: "kept", dropReason: null, ...over,
   };
 }
 function checksWith(findings: Finding[]): ChecksOk {

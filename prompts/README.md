@@ -8,6 +8,8 @@ system prompt; it never edits them. Change the wording here without touching `sr
   rubric text is appended to it. The plan's emphasis and questions are passed in the user message,
   so changing how hard a dimension is pressed is a plan change, not a prompt change.
 - `verify.md` — step 5, Self-verify (cheap model), asked once per finding after the code check.
+- `report.md` — step 6, Report (strong model). Writes the review from surviving findings only; the
+  weakest part is chosen by code first (see src/steps/report.ts, chooseWeakest).
 - `plan.md` — step 3, Plan (cheap model). Decides how hard each rubric dimension is pressed, and
   on what question, for this case and this target level. The rubric text is appended to it.
 

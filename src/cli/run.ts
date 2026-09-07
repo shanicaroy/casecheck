@@ -7,6 +7,7 @@
  */
 import { runPipeline } from "../pipeline/run";
 import { isLevel } from "../lib/levels";
+import { renderReportText } from "../steps/report";
 
 const url = process.argv[2];
 const flag = (name: string) => {
@@ -25,4 +26,7 @@ for await (const event of runPipeline(url, { currentLevel: flag("current"), targ
     continue;
   }
   console.log(JSON.stringify(event, null, 2));
+  if (event.type === "step" && event.step === "report" && event.status === "done") {
+    console.error("\n" + renderReportText(event.result.report) + "\n");
+  }
 }

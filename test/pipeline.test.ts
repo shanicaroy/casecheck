@@ -62,6 +62,7 @@ const checksAnswer: ChecksProposal = {
     reasoning: "test",
     answer_to_question: id === "H" ? "No, it cannot." : null,
     level_gap: id === "H" ? "Replace the counter with what was actually tested." : null,
+    trust_issue: false,
   })),
   images_read: [],
   could_not_judge: [],
@@ -74,7 +75,16 @@ const fake: CallModel = async (call) => {
       ? checksAnswer
       : /verification step/.test(call.system)
         ? { answer: "supports", reason: "The quote shows it." }
-        : singleCase;
+        : /report step/.test(call.system)
+          ? {
+              weakest_part: { chosen_id: "H", plain_words: "the outcome you claim", why_weak: "w", why_it_outranks: "o" },
+              one_fix: "Replace the counter with what you tested.",
+              one_fix_cites: ["H"],
+              toward_target: "To read as mid, show a real test result.",
+              toward_target_cites: ["H"],
+              secondary: [],
+            }
+          : singleCase;
   return {
     data: call.schema.parse(answer),
     usage: { tier: call.tier, model: "fake", inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, durationMs: 1 },
@@ -88,7 +98,12 @@ test("fetch, classify, plan, checks, verify: each announced before it runs, then
   for await (const e of runPipeline(`${base}/case`, {}, { callModel: fake, limits: lowFloor })) events.push(e);
 
   const shape = events.map((e) => (e.type === "run" ? `run:${e.status}` : `${e.step}:${e.status}`));
-  assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "checks:running", "checks:done", "verify:running", "verify:done", "run:complete"]);
+  assert.deepEqual(shape, ["fetch:running", "fetch:done", "classify:running", "classify:done", "plan:running", "plan:done", "checks:running", "checks:done", "verify:running", "verify:done", "report:running", "report:done", "run:complete"]);
+
+  const reportEvent = events.find((e) => e.type === "step" && e.step === "report" && e.status === "done");
+  assert.ok(reportEvent && reportEvent.type === "step" && reportEvent.step === "report" && reportEvent.status === "done");
+  assert.equal(reportEvent.result.report.weakest_part?.id, "H");
+  assert.equal(reportEvent.result.report.verification.made, 12);
 
   // Image bytes never reach the browser.
   const fetchEvent = events.find((e) => e.type === "step" && e.step === "fetch" && e.status === "done");
@@ -119,10 +134,11 @@ test("fetch, classify, plan, checks, verify: each announced before it runs, then
   const last = events.at(-1)!;
   assert.equal(last.type, "run");
   if (last.type !== "run" || last.status === "declined") return;
-  assert.equal(last.log.steps.length, 5);
+  assert.equal(last.log.steps.length, 6);
   assert.equal(last.log.steps[3].step, "checks");
   assert.equal(last.log.steps[3].usage?.tier, "strong");
   assert.equal(last.log.steps[4].step, "verify");
+  assert.equal(last.log.steps[5].step, "report");
   assert.deepEqual(last.log.claims, { made: 12, surviving: 12 });
   assert.deepEqual(last.log.selection, { mode: "single_page", title: "Huddle" });
 });

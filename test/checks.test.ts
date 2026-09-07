@@ -71,6 +71,7 @@ const good = (): ChecksProposal => ({
     reasoning: "r",
     answer_to_question: id === "H" ? "No." : "stray answer",
     level_gap: "stray gap",
+    trust_issue: false,
   })),
   images_read: [{ index: 1, narrative_recovered: "Interviews: 5 neighbours", artefact_verified: "a research map exists" }],
   could_not_judge: ["The Behance link was not read."],
@@ -89,7 +90,7 @@ test("runs on the strong tier, with the checks prompt, the rubric, the page text
   assert.equal(result.ok, true);
   assert.equal(seen.call!.tier, "strong");
   assert.match(seen.call!.system, /check step of Case Check/);
-  assert.match(seen.call!.system, /\*\*H\. Outcome and honesty\*\*/);
+  assert.match(seen.call!.system, /\*\*H\. Outcome and honesty ★\*\*/);
   assert.match(seen.call!.user, /<page_text>\nHuddle/);
   assert.equal(seen.call!.images!.length, 1);
   assert.match(seen.call!.images![0].label, /Image 1 of 1: alt "Research map", 40% down the page/);
@@ -148,15 +149,25 @@ test("a finding the model omits is recorded as dropped, not invented", () => {
   assert.equal(findings[6].evidence, null);
 });
 
-test("L is always low confidence and never eligible; K is never eligible", () => {
+test("only the ★ dimensions A–E and H are eligible; L is always low confidence", () => {
   const { findings } = normalise(good(), plan, 1, false);
   const l = findings[11];
   assert.equal(l.id, "L");
   assert.equal(l.confidence, "low");
-  assert.equal(l.eligibleAsWeakest, false);
-  assert.equal(findings[10].id, "K");
-  assert.equal(findings[10].eligibleAsWeakest, false);
-  for (const f of findings.slice(0, 10)) assert.equal(f.eligibleAsWeakest, true, `${f.id} eligible`);
+  assert.deepEqual(findings.filter((f) => f.eligibleAsWeakest).map((f) => f.id), ["A", "B", "C", "D", "E", "H"]);
+});
+
+test("trust_issue is only honoured on H with a weak or missing verdict", () => {
+  const p = good();
+  p.findings[0].trust_issue = true;                                    // A: cleared
+  p.findings[7] = { ...p.findings[7], trust_issue: true };             // H present: cleared
+  const first = normalise(p, plan, 1, false);
+  assert.equal(first.findings[0].trustIssue, false);
+  assert.equal(first.findings[7].trustIssue, false);
+  assert.match(first.adjustments.join("\n"), /only H may raise/);
+  p.findings[7] = { ...p.findings[7], verdict: "weak", trust_issue: true };
+  const second = normalise(p, plan, 1, false);
+  assert.equal(second.findings[7].trustIssue, true);
 });
 
 test("an image-grounded finding is capped at medium confidence", () => {
