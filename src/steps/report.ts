@@ -103,11 +103,16 @@ function proposalSchema(allowedIds: DimensionId[]) {
   return z.object({
     weakest_part: z.object({
       chosen_id: Id,
-      plain_words: z.string(),
+      /** One sentence naming the weakest part in plain words, as a heading. */
+      headline: z.string(),
       why_weak: z.string(),
+      why_it_matters: z.string(),
       why_it_outranks: z.string(),
     }),
+    /** The change, in one sentence. */
     one_fix: z.string(),
+    /** An example or how to do it, one to three sentences. */
+    one_fix_detail: z.string(),
     one_fix_cites: z.array(z.enum(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"])),
     toward_target: z.string(),
     toward_target_cites: z.array(z.enum(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"])),
@@ -121,15 +126,16 @@ export interface Report {
   weakest_part: {
     id: DimensionId;
     name: string;
-    plain_words: string;
+    headline: string;
     evidence: Evidence;
     why_weak: string;
+    why_it_matters: string;
     why_it_outranks: string;
     confidence: SurvivingFinding["confidence"];
     confidence_reason: string | null;
     trust_issue: boolean;
   } | null;
-  one_fix: { text: string; target: Level; cites: DimensionId[] } | null;
+  one_fix: { text: string; detail: string; target: Level; cites: DimensionId[] } | null;
   reads_as: {
     level: Classification["seniority"];
     confidence: Classification["seniority_confidence"];
@@ -280,15 +286,16 @@ export async function buildReport(inputs: ReportInputs, deps: ReportDeps = {}): 
     weakest_part: {
       id: winner.id,
       name: winner.name,
-      plain_words: proposal.weakest_part.plain_words,
+      headline: proposal.weakest_part.headline,
       evidence: winner.evidence,
       why_weak: proposal.weakest_part.why_weak,
+      why_it_matters: proposal.weakest_part.why_it_matters,
       why_it_outranks: proposal.weakest_part.why_it_outranks,
       confidence: winner.confidence,
       confidence_reason: winner.confidenceReason,
       trust_issue: winner.trustIssue,
     },
-    one_fix: { text: proposal.one_fix, target: plan.levels.target, cites: fixCites },
+    one_fix: { text: proposal.one_fix, detail: proposal.one_fix_detail, target: plan.levels.target, cites: fixCites },
     reads_as: { ...readsAsBase, what_is_missing, cites: targetCites },
     inventory,
     secondary,
@@ -341,16 +348,17 @@ export function renderReportText(r: Report): string {
   const lines: string[] = [];
   if (r.weakest_part) {
     const w = r.weakest_part;
-    lines.push(`THE WEAKEST PART: ${w.plain_words} (${w.id} ${w.name}${w.trust_issue ? ", a trust problem" : ""})`);
+    lines.push(`THE WEAKEST PART: ${w.headline} (${w.id} ${w.name}${w.trust_issue ? ", a trust problem" : ""})`);
     lines.push(w.evidence.kind === "quote" ? `  Rests on: "${w.evidence.text}"` : `  Rests on: image ${w.evidence.index} (${w.evidence.note})`);
     lines.push(`  Why it's weak: ${w.why_weak}`);
+    lines.push(`  Why it matters: ${w.why_it_matters}`);
     lines.push(`  Why it outranks the others: ${w.why_it_outranks}`);
     lines.push(`  Confidence: ${w.confidence}${w.confidence_reason ? ` (${w.confidence_reason})` : ""}`);
   } else {
     lines.push("THE WEAKEST PART: none found among the storytelling dimensions the tool can judge.");
   }
   lines.push("");
-  lines.push(`THE ONE FIX (to read as ${r.reads_as.target}): ${r.one_fix ? r.one_fix.text : "nothing to fix at this level of the read."}`);
+  lines.push(`THE ONE FIX (to read as ${r.reads_as.target}): ${r.one_fix ? `${r.one_fix.text} ${r.one_fix.detail}` : "nothing to fix at this level of the read."}`);
   lines.push("");
   lines.push(`READS AS ~${r.reads_as.level} (confidence ${r.reads_as.confidence}) · aiming for ${r.reads_as.target} (${r.reads_as.target_source === "stated" ? "stated" : "assumed"})`);
   lines.push(`  To read as ${r.reads_as.target}: ${r.reads_as.what_is_missing || "nothing on this page was found missing."}`);

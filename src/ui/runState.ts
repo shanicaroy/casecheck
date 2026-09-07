@@ -11,10 +11,12 @@ import type { ReportResult } from "../steps/report";
 import type { RunEvent, RunLog, FetchOkPublic, Declined } from "../pipeline/run";
 import { STEP_ORDER, type StepName } from "../pipeline/steps";
 
-export type StepState = "pending" | "running" | "done" | "failed" | "needs_choice" | "not_built";
+export type StepState = "pending" | "running" | "done" | "failed" | "needs_choice";
 
 export interface RunState {
   steps: Record<StepName, StepState>;
+  /** Real sub-activity lines per step, in arrival order. */
+  lines: Record<StepName, string[]>;
   fetch: FetchOkPublic | FetchFail | null;
   classify: ClassifyResult | null;
   plan: PlanResult | null;
@@ -29,7 +31,8 @@ export interface RunState {
 
 export function freshState(): RunState {
   const steps = Object.fromEntries(STEP_ORDER.map((s) => [s, "pending"])) as Record<StepName, StepState>;
-  return { steps, fetch: null, classify: null, plan: null, checks: null, verify: null, report: null, declined: null, options: null, log: null, error: null };
+  const lines = Object.fromEntries(STEP_ORDER.map((s) => [s, [] as string[]])) as Record<StepName, string[]>;
+  return { steps, lines, fetch: null, classify: null, plan: null, checks: null, verify: null, report: null, declined: null, options: null, log: null, error: null };
 }
 
 /** Fold one stream event into the run state. */
@@ -39,7 +42,11 @@ export function apply(state: RunState, event: RunEvent) {
     if (event.status === "declined") state.declined = event.declined;
     return;
   }
-  state.steps[event.step] = event.status === "running" ? "running" : event.status;
+  if (event.status === "note") {
+    state.lines[event.step].push(event.line);
+    return;
+  }
+  state.steps[event.step] = event.status;
   if (event.step === "fetch" && event.status === "done") state.fetch = event.result;
   if (event.step === "fetch" && event.status === "failed") state.fetch = event.error;
   if (event.step === "classify" && (event.status === "done" || event.status === "needs_choice")) state.classify = event.result;

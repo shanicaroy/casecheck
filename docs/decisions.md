@@ -321,3 +321,42 @@ resumed. Cancel and Back abort the stream.
 
 **The §9 sentence is on the how view; the landing carries the short trust line**, as the
 reference lays them out. Both are in `content/copy.ts`.
+
+## 2026-09-07 · Output layer, steps 2 and 3: the running and report views
+
+**Running view ported 1:1 from the reference.** Same container, orb (the mark, floating and
+glowing by script as the reference does), "Reviewing", the URL with its scheme stripped, the
+elapsed timer ticking every 500ms from the real start, Cancel, and the six steps as a bare list with
+the reference's names. States come from `data-state`. There is no demo events array anywhere in
+the app.
+
+**Sub-activity lines are pipeline events, never simulated.** The pipeline now emits `note`
+events from real numbers as each step produces them: narrative words captured, links, images and
+embeds found, the case study chosen and its shape, where the plan presses hardest, images being
+read, findings that carried evidence, the verify counts. The templates live in
+`content/activity.ts`; the numbers come from the steps. A step with nothing real to say shows
+nothing under it.
+
+**"Usually about Ns" is the median of logged step timings, with the reference's defaults until
+five runs exist for a step.** Only durations are stored, never content (§9). The store is Upstash
+Redis over REST when the Vercel Marketplace variables are present, otherwise memory for the life
+of the server process. Recorded only for runs that completed every step, so a declined or failed
+run does not shorten the estimate.
+
+**Report view ported 1:1, in the §14 order, from slice 6's typed output.** Sticky rail with
+scroll-tracked highlight; title from the classification; the verification line; the weakest part
+with headline, quote, why it matters, why it comes first, and "See the reasoning" read from the
+finding (dimension, plan emphasis and reason, question, confidence, verification flag); the fix in
+two parts framed to the target; reads-as with confidence and the estimate note; the inventory table
+with status dots; secondary; limits and assumptions; how Shanica evaluates; actions; where Case
+Check stops. The report step's answer gained `headline`, `why_it_matters` and `one_fix_detail`
+so the reference's sections are filled by the model, not by code splitting sentences.
+
+**Owner mode shows telemetry, dropped claims and the ranking inputs.** Off by default, toggle only
+present with `?owner`, only on the report view (the reference hides it elsewhere).
+
+**Failures and declines show on the running view, under the step that stopped.** The reference has
+no error state; one line in the missing colour under the step, and the meta row's Cancel becomes
+"Review another case study".
+
+**"Request a review with Shanica" is inert until a booking link is set** in `content/copy.ts`.

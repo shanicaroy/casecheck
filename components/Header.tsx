@@ -22,11 +22,11 @@ export function Header({ onBack, ownerToggle, ownerOn, onToggleOwner }: {
         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
         {copy.landing.back}
       </button>
-      <div className="brand"><Mark />{copy.name}</div>
+      <div className="brand"><Mark id="brand" />{copy.name}</div>
       <div className="hdr-right">
         <span>{copy.landing.headerNote}</span>
         {ownerToggle && (
-          <button type="button" className="btn-ghost" aria-pressed={ownerOn} onClick={onToggleOwner}>{copy.landing.ownerMode}</button>
+          <button type="button" id="ownerToggle" className="btn-ghost" aria-pressed={ownerOn} onClick={onToggleOwner}>{copy.landing.ownerMode}</button>
         )}
       </div>
     </header>

@@ -45,8 +45,8 @@ function fakeModel(pick: (allowed: string[]) => Partial<ReportProposal>, seen: {
     seen.user = call.user;
     const allowed = /choose the one that matters more for the target and say why: ([A-L, ]+)\./.exec(call.user)?.[1].split(", ") ?? [/Chosen by the ranking rule: ([A-L])/.exec(call.user)![1]];
     const base: ReportProposal = {
-      weakest_part: { chosen_id: allowed[0] as ReportProposal["weakest_part"]["chosen_id"], plain_words: "the thing", why_weak: "because", why_it_outranks: "since" },
-      one_fix: "Change X to Y this week.", one_fix_cites: [allowed[0] as "A"],
+      weakest_part: { chosen_id: allowed[0] as ReportProposal["weakest_part"]["chosen_id"], headline: "The thing is weak.", why_weak: "because", why_it_matters: "it costs", why_it_outranks: "since" },
+      one_fix: "Change X to Y this week.", one_fix_detail: "For example, write Z.", one_fix_cites: [allowed[0] as "A"],
       toward_target: "To read as mid, show Z.", toward_target_cites: [allowed[0] as "A"],
       secondary: [],
       ...pick(allowed),
@@ -93,7 +93,7 @@ test("ranking: missing over weak, then emphasis, then confidence; a full tie is 
 test("a tie is broken by the model, which may only pick from the tied set", async () => {
   const s = allPresent().map((f) => (f.id === "B" || f.id === "E" ? sf(f.id, { verdict: "weak" }) : f));
   const seen = { calls: 0 } as { user?: string; calls: number };
-  const result = await buildReport({ verified: verified(s), checks, classification, plan }, { callModel: fakeModel(() => ({ weakest_part: { chosen_id: "E", plain_words: "iteration", why_weak: "w", why_it_outranks: "E matters more toward mid" } }), seen) });
+  const result = await buildReport({ verified: verified(s), checks, classification, plan }, { callModel: fakeModel(() => ({ weakest_part: { chosen_id: "E", headline: "Iteration is not shown.", why_weak: "w", why_it_matters: "m", why_it_outranks: "E matters more toward mid" } }), seen) });
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.report.weakest_part?.id, "E");

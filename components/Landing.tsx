@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { copy } from "@/content/copy";
 import { Mark } from "@/components/Mark";
+import { useFloat } from "@/src/ui/useFloat";
 import { isLevel, type Level } from "@/src/lib/levels";
 
 export interface StartRequest {
@@ -27,6 +28,8 @@ export function Landing({ onStart, onHow, busy, problem }: { onStart: (req: Star
   const [target, setTarget] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null);
+  useFloat(avatarRef);
   const l = copy.landing;
 
   // Cursor light: the glow's centre eases toward the pointer (reference behaviour).
@@ -69,7 +72,7 @@ export function Landing({ onStart, onHow, busy, problem }: { onStart: (req: Star
     <main className="landing" ref={mainRef}>
       <div className="aurora" aria-hidden="true"><span className="a1" /><span className="a2" /><span className="a3" /><span className="a4" /></div>
       <section className="hero">
-        <div className="avatar" aria-hidden="true"><Mark /></div>
+        <div className="avatar" aria-hidden="true" ref={avatarRef}><Mark id="avatar" /></div>
         <h1>{l.hero.title}</h1>
 
         <div className={`reviewer-wrap${url.trim() ? " has-url" : ""}`} ref={wrapRef}>

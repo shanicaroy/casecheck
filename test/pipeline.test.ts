@@ -77,8 +77,9 @@ const fake: CallModel = async (call) => {
         ? { answer: "supports", reason: "The quote shows it." }
         : /report step/.test(call.system)
           ? {
-              weakest_part: { chosen_id: "H", plain_words: "the outcome you claim", why_weak: "w", why_it_outranks: "o" },
+              weakest_part: { chosen_id: "H", headline: "The outcome you claim cannot have happened.", why_weak: "w", why_it_matters: "m", why_it_outranks: "o" },
               one_fix: "Replace the counter with what you tested.",
+              one_fix_detail: "Write what you tested and with whom.",
               one_fix_cites: ["H"],
               toward_target: "To read as mid, show a real test result.",
               toward_target_cites: ["H"],

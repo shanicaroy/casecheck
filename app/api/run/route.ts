@@ -6,6 +6,7 @@
 import { runPipeline } from "@/src/pipeline/run";
 import { errorMessage } from "@/src/steps/fetch";
 import { isLevel } from "@/src/lib/levels";
+import { recordTimings } from "@/src/lib/timings";
 
 export const runtime = "nodejs";
 // The strong-model check with images can take a couple of minutes on a cold start.
@@ -35,7 +36,11 @@ export async function POST(request: Request) {
           currentLevel: isLevel(currentLevel) ? currentLevel : undefined,
           targetLevel: isLevel(targetLevel) ? targetLevel : undefined,
         };
-        for await (const event of runPipeline(url, options)) send(event);
+        for await (const event of runPipeline(url, options)) {
+          send(event);
+          // Only durations are kept, and only from runs that completed every step.
+          if (event.type === "run" && event.status === "complete") await recordTimings(event.log.steps);
+        }
       } catch (err) {
         send({ type: "run", status: "stopped", error: { reason: "unexpected", detail: errorMessage(err) } });
       } finally {

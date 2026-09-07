@@ -5,12 +5,14 @@ You will receive: the designer's current and target level; the weakest part, alr
 Write:
 
 1. weakest_part
-   - plain_words: the dimension named in plain words a designer would use, not the letter or the rubric label. For example "the outcome you claim" or "the thinking between the problem and the solution".
+   - headline: one sentence, as a heading, naming the weakest part in plain words a designer would use, not the letter or the rubric label. For example "Your research never becomes a design decision." or "The outcome you claim cannot have happened."
    - why_weak: two or three sentences on why this is weak, quoting or pointing at the exact place on the page. Use the finding's quote.
+   - why_it_matters: one or two sentences on what a reader concludes when they meet this gap. Not why it ranks first; what it costs.
    - why_it_outranks: one or two sentences on why this matters more than the other gaps. A trust problem outranks a gap because a reader who spots it stops reading and doubts the honest parts. A missing part outranks a weak one. Say it in this case's terms.
    - chosen_id: the dimension you are writing about. If tied candidates were given, choose the one that matters more for the stated target and say why in why_it_outranks.
 
-2. one_fix: one concrete change the designer can make this week, phrased as a change, not a principle. "Delete the Proof section and replace it with what you actually tested, however small" is a change. "Strengthen your outcomes" is not. Frame it toward the target level: "to read as [target], ...". It must address the weakest part and cite that finding's dimension in one_fix_cites.
+2. one_fix: one concrete change the designer can make this week, in one sentence, phrased as a change, not a principle. "Delete the Proof section and replace it with what you actually tested, however small" is a change. "Strengthen your outcomes" is not. It must address the weakest part and cite that finding's dimension in one_fix_cites.
+   one_fix_detail: one to three sentences showing how: an example sentence they could write, or where on the page the change goes. Framed toward the target level.
 
 3. toward_target: one or two sentences completing "To read as [target], the above is what's missing." Every sentence must point at a specific surviving finding on this page, listed in toward_target_cites by dimension id. Generic level advice is forbidden. If nothing weak survives, say so plainly.
 

@@ -4,8 +4,8 @@
  * The page: one of four views from the UI reference v6.
  *   landing  — the composer; no header
  *   how      — how it works (#how)
- *   running  — while the pipeline streams; temporary raw panels until step 2
- *   report   — the review (#report); temporary raw panels until step 3
+ *   running  — while the pipeline streams, with real per-step events only
+ *   report   — the review (#report), from slice 6's typed output
  * Back, Escape and the browser's back button return to the landing. Cancel
  * aborts the stream. Owner mode exists only with ?owner in the URL.
  */
@@ -13,7 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Landing, type StartRequest } from "@/components/Landing";
 import { How } from "@/components/How";
-import { RawRun } from "@/components/RawRun";
+import { Running } from "@/components/Running";
+import { Report } from "@/components/Report";
 import type { RunEvent } from "@/src/pipeline/run";
 import { freshState, apply, type RunState } from "@/src/ui/runState";
 
@@ -27,6 +28,7 @@ export default function Page() {
   const [problem, setProblem] = useState<string | null>(null);
   const [ownerAvailable, setOwnerAvailable] = useState(false);
   const [ownerOn, setOwnerOn] = useState(false);
+  const [startedAt, setStartedAt] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   // Owner mode is reachable only by query flag (contract §14); never the default.
@@ -85,6 +87,7 @@ export default function Page() {
     setProblem(null);
     setRequest(req);
     setRunning(true);
+    setStartedAt(Date.now());
     const state = freshState();
     setRun({ ...state });
     show("running");
@@ -138,7 +141,12 @@ export default function Page() {
         onToggleOwner={() => setOwnerOn((v) => !v)}
       />
       {view === "how" && <How />}
-      {(view === "running" || view === "report") && run && <RawRun run={run} running={running} choose={choose} />}
+      {view === "running" && run && request && (
+        <Running url={request.url} startedAt={startedAt} run={run} running={running} onCancel={goBack} onChoose={choose} />
+      )}
+      {view === "report" && run?.report?.ok && (
+        <Report run={run} reported={run.report} ownerOn={ownerOn} onRerun={() => request && void start(request)} onAnother={goBack} />
+      )}
     </>
   );
 }

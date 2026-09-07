@@ -22,6 +22,7 @@ import { verify, type VerifyOk, type VerifyFail } from "../steps/verify";
 import { buildReport, type ReportOk, type ReportFail } from "../steps/report";
 import type { CallModel, ModelUsage } from "../lib/model";
 import type { LevelInputs } from "../lib/levels";
+import { activity } from "../../content/activity";
 import { limits as defaultLimits, type Limits } from "../../config/limits";
 
 import type { StepName } from "./steps";
@@ -66,6 +67,8 @@ export interface Declined {
 
 export type RunEvent =
   | { type: "step"; step: StepName; status: "running" }
+  /** A real sub-activity line for the running view. Never simulated. */
+  | { type: "step"; step: StepName; status: "note"; line: string }
   | { type: "step"; step: "fetch"; status: "done"; result: FetchOkPublic; durationMs: number }
   | { type: "step"; step: "fetch"; status: "failed"; error: FetchFail; durationMs: number }
   | { type: "step"; step: "classify"; status: "done"; result: ClassifyOk; durationMs: number }
@@ -117,6 +120,8 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
     yield finish("stopped");
     return;
   }
+  yield { type: "step", step: "fetch", status: "note", line: activity.fetch.captured(fetched.narrativeWordCount) };
+  yield { type: "step", step: "fetch", status: "note", line: activity.fetch.found(fetched.links.length, fetched.imageCandidates, fetched.embeds.length) };
   yield { type: "step", step: "fetch", status: "done", result: publicFetch(fetched), durationMs: fetched.durationMs };
 
   // 2. Classify
@@ -142,6 +147,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
     const target = classified.classification.case_studies[classified.selectedIndex]!.url!;
     log.followedTo = target;
     yield { type: "step", step: "fetch", status: "running" };
+    yield { type: "step", step: "fetch", status: "note", line: activity.fetch.following(safeHost(target)) };
     const followed = await fetchPage(target, { limits: lim });
     log.steps.push({ step: "fetch", durationMs: followed.durationMs });
     if (!followed.ok) {
@@ -150,6 +156,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
       return;
     }
     fetched = followed;
+    yield { type: "step", step: "fetch", status: "note", line: activity.fetch.captured(fetched.narrativeWordCount) };
     yield { type: "step", step: "fetch", status: "done", result: publicFetch(fetched), durationMs: fetched.durationMs };
     yield { type: "step", step: "classify", status: "running" };
     const t2b = Date.now();
@@ -168,6 +175,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
   const c = classified.classification;
   if (classified.needsChoice) {
     log.selection = { mode: "asked", title: null };
+    yield { type: "step", step: "classify", status: "note", line: activity.classify.several(c.case_studies.length) };
     yield {
       type: "step",
       step: "classify",
@@ -184,6 +192,13 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
     mode: chosen ? (c.page_kind === "single_case_study" ? "single_page" : "assumed_only_one") : "none",
     title: chosen?.title ?? null,
   };
+  if (chosen) {
+    const parts = Object.values(c.inventory);
+    yield { type: "step", step: "classify", status: "note", line: activity.classify.caseStudy(chosen.title) };
+    yield { type: "step", step: "classify", status: "note", line: activity.classify.shape(c.problem_type, parts.filter((i) => i.status === "present").length, parts.length) };
+  } else {
+    yield { type: "step", step: "classify", status: "note", line: activity.classify.nothing };
+  }
   yield { type: "step", step: "classify", status: "done", result: classified, durationMs: ms2 };
 
   // Nothing to review (not a portfolio, too little content): stop here.
@@ -223,10 +238,14 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
     return;
   }
   log.steps.push({ step: "plan", durationMs: ms3, usage: planned.usage });
+  yield { type: "step", step: "plan", status: "note", line: activity.plan.pressing(planned.plan.dimensions.filter((d) => d.emphasis === "press_hard").map((d) => d.name)) };
   yield { type: "step", step: "plan", status: "done", result: planned, durationMs: ms3 };
 
   // 4. Run checks — strong model, with the captured images.
   yield { type: "step", step: "checks", status: "running" };
+  if (fetched.images.length > 0) {
+    yield { type: "step", step: "checks", status: "note", line: activity.checks.images(fetched.images.length, fetched.imageCandidates) };
+  }
   const t4 = Date.now();
   const checked = await runChecks(fetched, c, planned.plan, { callModel: deps.callModel, limits: lim });
   const ms4 = Date.now() - t4;
@@ -237,6 +256,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
     return;
   }
   log.steps.push({ step: "checks", durationMs: ms4, usage: checked.usage });
+  yield { type: "step", step: "checks", status: "note", line: activity.checks.findings(checked.findings.filter((f) => f.status === "kept").length) };
   yield { type: "step", step: "checks", status: "done", result: checked, durationMs: ms4 };
 
   // 5. Self-verify — code first, then the cheap model once per surviving finding.
@@ -252,6 +272,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
   }
   log.steps.push({ step: "verify", durationMs: ms5, usage: verified.usage });
   log.claims = { made: verified.claimsMade, surviving: verified.claimsSurviving };
+  yield { type: "step", step: "verify", status: "note", line: activity.verify.counts(verified.claimsMade, verified.claimsSurviving) };
   yield { type: "step", step: "verify", status: "done", result: verified, durationMs: ms5 };
 
   // 6. Report — from surviving findings only.
@@ -272,4 +293,12 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
   yield { type: "step", step: "report", status: "done", result: reported, durationMs: ms6 };
 
   yield finish("complete");
+}
+
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
 }
