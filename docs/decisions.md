@@ -408,3 +408,15 @@ v0.3 decision is that the verdict is always visible and the reasoning is one exp
 
 **Radius moved from 4px to 20–24px on cards** to match the composer, so the thread reads as one
 surface. Tokens live in the second `:root` block of `app/globals.css`.
+
+## 2026-09-26 · Fetch was too slow on heavy pages
+
+**Bounded the fetch step so image capture cannot stall it.** On a real, heavy site the fetch step
+was taking 90+ seconds: up to 8 page images were each screenshotted with an 8s timeout (up to 64s),
+on top of an 8s network-idle wait. Changes: the network-idle settle drops to 3.5s
+(`limits.settleMs`), each image screenshot times out at 2.5s (`limits.imageShotMs`), and the whole
+image-capture loop stops once a 12s budget is spent (`limits.imageBudgetMs`), keeping whatever it
+captured. Images not captured in the budget are declared "not read" downstream, exactly like images
+beyond the cap. Worst-case fetch drops from ~100s to ~25s, typically under 10s. All three numbers
+are env-overridable in `config/limits.ts`. The running view already showed this correctly as slow,
+not stuck, via the heartbeat; this fixes the underlying speed.
