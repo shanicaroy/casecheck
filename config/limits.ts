@@ -18,6 +18,12 @@ export const limits = {
   /** Images smaller than this are icons and avatars, not artefacts. */
   minImageWidth: 200,
   minImageHeight: 120,
+  /** After the DOM is ready, wait at most this long for the network to go quiet. */
+  settleMs: envInt("CASECHECK_SETTLE_MS", 3500),
+  /** Give up on a single image screenshot after this long. */
+  imageShotMs: envInt("CASECHECK_IMAGE_SHOT_MS", 2500),
+  /** Stop capturing images once this much time has gone on them, keeping what we have. */
+  imageBudgetMs: envInt("CASECHECK_IMAGE_BUDGET_MS", 12_000),
 };
 
 export type Limits = typeof limits;

@@ -120,7 +120,7 @@ export type FetchResult = FetchOk | FetchFail;
 export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): Promise<FetchResult> {
   const started = Date.now();
   const timeoutMs = opts.timeoutMs ?? 30_000;
-  const settleMs = opts.settleMs ?? 8_000;
+  const settleMs = opts.settleMs ?? (opts.limits?.settleMs ?? defaultLimits.settleMs);
   const fail = (reason: FetchFailReason, detail: string, extra: Partial<FetchFail> = {}): FetchFail => ({
     ok: false,
     requestedUrl,
@@ -219,9 +219,14 @@ export async function fetchPage(requestedUrl: string, opts: FetchOptions = {}): 
         .sort((a, b) => a.nearbyWords - b.nearbyWords || b.width * b.height - a.width * a.height)
         .slice(0, lim.imageCap)
         .sort((a, b) => a.top - b.top);
+      // Cap the total time spent screenshotting images, so one heavy page
+      // cannot stall the fetch. Whatever is not captured in the budget is
+      // declared "not read" downstream, exactly like images beyond the cap.
+      const imageDeadline = Date.now() + lim.imageBudgetMs;
       for (const c of chosen) {
+        if (Date.now() > imageDeadline) break;
         try {
-          const buf = await page.locator(`[data-casecheck-img="${c.id}"]`).first().screenshot({ type: "jpeg", quality: 70, timeout: 8_000 });
+          const buf = await page.locator(`[data-casecheck-img="${c.id}"]`).first().screenshot({ type: "jpeg", quality: 70, timeout: lim.imageShotMs });
           images.push({
             index: images.length + 1,
             alt: c.alt,
