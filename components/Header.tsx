@@ -1,34 +1,28 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { copy } from "@/content/copy";
 import { Mark } from "@/components/Mark";
 
 /**
- * The transparent header from the UI reference: Back on the left, the name in
- * the centre, context and owner mode on the right. Not rendered on the
- * landing. The owner-mode toggle only exists when the page was opened with
- * ?owner (contract §14: a toggle or a query flag, never the default) and only
- * on the report view, as the reference hides it elsewhere.
+ * The top bar on every view except the landing: back on the left, the name
+ * in the centre, view actions on the right. Frosted and sticky, so the report
+ * can scroll under it. On a phone the back label collapses to the chevron.
  */
-export function Header({ onBack, ownerToggle, ownerOn, onToggleOwner }: {
+export function Header({ onBack, backLabel, lined = false, right }: {
   onBack: () => void;
-  ownerToggle: boolean;
-  ownerOn: boolean;
-  onToggleOwner: () => void;
+  backLabel: string;
+  lined?: boolean;
+  right?: ReactNode;
 }) {
   return (
-    <header className="hdr">
-      <button className="back" type="button" onClick={onBack}>
+    <header className={`topbar${lined ? " lined" : ""}`}>
+      <button className="back" type="button" onClick={onBack} aria-label={backLabel}>
         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        {copy.landing.back}
+        <span>{backLabel}</span>
       </button>
       <div className="brand"><Mark id="brand" />{copy.name}</div>
-      <div className="hdr-right">
-        <span>{copy.landing.headerNote}</span>
-        {ownerToggle && (
-          <button type="button" id="ownerToggle" className="btn-ghost" aria-pressed={ownerOn} onClick={onToggleOwner}>{copy.landing.ownerMode}</button>
-        )}
-      </div>
+      <div className="right">{right}</div>
     </header>
   );
 }
