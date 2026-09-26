@@ -1,49 +1,63 @@
 "use client";
 
 /**
- * The page: one of four views from the UI reference v6.
- *   landing  — the composer; no header
- *   how      — how it works (#how)
- *   running  — while the pipeline streams, with real per-step events only
- *   report   — the review (#report), from slice 6's typed output
- * Back, Escape and the browser's back button return to the landing. Cancel
- * aborts the stream. Owner mode exists only with ?owner in the URL.
+ * The page: one of six views.
+ *   landing   the composer; no header (unchanged)
+ *   how       how it works (#how)
+ *   running   while the pipeline streams, from real per-step events only
+ *   clarify   the link held several case studies; the designer picks one
+ *   declined  the page can't be reviewed honestly; says why, offers the paste fallback
+ *   report    the review (#report)
+ * Where a finished run lands is decided in one place, settle(), from the
+ * run's own results. Back, Escape and the browser's back button return to
+ * the landing. Owner mode exists only with ?owner in the URL.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Landing, type StartRequest } from "@/components/Landing";
 import { How } from "@/components/How";
 import { Running } from "@/components/Running";
+import { Clarify } from "@/components/Clarify";
+import { Declined, type DeclinedCopy } from "@/components/Declined";
 import { Report } from "@/components/Report";
-import type { RunEvent } from "@/src/pipeline/run";
-import { freshState, apply, type RunState } from "@/src/ui/runState";
+import { ui, READER_BLOCKING_HOSTS } from "@/content/ui";
+import { freshState, apply, type RunState, type StreamEvent } from "@/src/ui/runState";
+import { displaySource, hostOf, levelWord, words } from "@/src/ui/format";
+import type { PastedImage } from "@/src/steps/pasted";
 
-type View = "landing" | "how" | "running" | "report";
+type View = "landing" | "how" | "running" | "clarify" | "declined" | "report";
+
+interface Request extends StartRequest {
+  pasted?: { text: string; images: PastedImage[] };
+}
+
+const OPEN_REPORT_AFTER_MS = 1600;
 
 export default function Page() {
   const [view, setView] = useState<View>("landing");
-  const [request, setRequest] = useState<StartRequest | null>(null);
+  const [request, setRequest] = useState<Request | null>(null);
   const [running, setRunning] = useState(false);
   const [run, setRun] = useState<RunState | null>(null);
+  const [declined, setDeclined] = useState<DeclinedCopy | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [ownerAvailable, setOwnerAvailable] = useState(false);
   const [ownerOn, setOwnerOn] = useState(false);
   const [startedAt, setStartedAt] = useState(0);
+  const [endedAt, setEndedAt] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Owner mode is reachable only by query flag (contract §14); never the default.
-  // Deep links: #how and #report open those views; a run is never restored from a hash.
   useEffect(() => {
     try {
       setOwnerAvailable(new URLSearchParams(window.location.search).has("owner"));
-      const h = window.location.hash.replace("#", "");
-      if (h === "how") setView("how");
+      if (window.location.hash === "#how") setView("how");
     } catch {
       /* no window access */
     }
   }, []);
 
   const show = useCallback((next: View) => {
+    if (openTimer.current) clearTimeout(openTimer.current);
     setView(next);
     window.scrollTo({ top: 0 });
     const hash = next === "how" || next === "report" ? `#${next}` : "";
@@ -61,12 +75,14 @@ export default function Page() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
       if (e.key === "Escape" && view !== "landing") goBack();
     };
     const onPop = () => {
       const h = window.location.hash.replace("#", "");
       if (h === "how") setView("how");
-      else if (h === "report" && run?.report) setView("report");
+      else if (h === "report" && run?.report?.ok) setView("report");
       else {
         abortRef.current?.abort();
         setView("landing");
@@ -80,14 +96,27 @@ export default function Page() {
     };
   }, [view, run, goBack]);
 
-  async function start(req: StartRequest) {
+  async function start(req: Request) {
     abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
     setProblem(null);
     setRequest(req);
+    setDeclined(null);
+
+    // A host known to block readers is caught before a doomed run starts.
+    const host = req.url ? hostOf(req.url) : null;
+    const blocker = host ? Object.entries(READER_BLOCKING_HOSTS).find(([h]) => host === h || host.endsWith(`.${h}`)) : undefined;
+    if (!req.pasted && blocker) {
+      setRun(null);
+      setDeclined(ui.declined.blocked(blocker[1]));
+      show("declined");
+      return;
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
     setRunning(true);
     setStartedAt(Date.now());
+    setEndedAt(null);
     const state = freshState();
     setRun({ ...state });
     show("running");
@@ -96,7 +125,11 @@ export default function Page() {
       const response = await fetch("/api/run", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: req.url, currentLevel: req.currentLevel, targetLevel: req.targetLevel }),
+        body: JSON.stringify(
+          req.pasted
+            ? { text: req.pasted.text, images: req.pasted.images, currentLevel: req.currentLevel, targetLevel: req.targetLevel }
+            : { url: req.url, currentLevel: req.currentLevel, targetLevel: req.targetLevel },
+        ),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) throw new Error(`Server answered ${response.status}.`);
@@ -110,42 +143,112 @@ export default function Page() {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
-        for (const line of lines) if (line.trim()) apply(state, JSON.parse(line) as RunEvent);
+        for (const line of lines) if (line.trim()) apply(state, JSON.parse(line) as StreamEvent);
         setRun({ ...state });
       }
-      if (!controller.signal.aborted) show(state.report ? "report" : "running");
     } catch (err) {
       if (controller.signal.aborted) return;
       state.error = err instanceof Error ? err.message : String(err);
       setRun({ ...state });
     } finally {
-      if (abortRef.current === controller) setRunning(false);
+      if (abortRef.current === controller) {
+        setRunning(false);
+        setEndedAt(Date.now());
+      }
+    }
+    if (!controller.signal.aborted) settle(state);
+  }
+
+  /** Where a finished run lands. Anything not listed stays on the running view, which shows it stopped and offers a retry. */
+  function settle(state: RunState) {
+    if (state.report?.ok) {
+      openTimer.current = setTimeout(() => show("report"), OPEN_REPORT_AFTER_MS);
+      return;
+    }
+    if (state.options) {
+      show("clarify");
+      return;
+    }
+    const d = ui.declined;
+    let message: DeclinedCopy | null = null;
+    if (state.declined) message = d.thin(state.declined.narrativeWordCount, state.declined.floor);
+    else if (state.fetch && !state.fetch.ok) {
+      const f = state.fetch;
+      if (f.reason === "http_error" && (f.status === 401 || f.status === 403)) message = d.login;
+      else if (f.reason === "http_error" || f.reason === "unreachable") message = d.dead;
+      else if (f.reason === "timeout") message = d.timeout;
+      else if (f.reason === "not_html") message = d.notHtml;
+      else if (f.reason === "invalid_url") message = d.invalid;
+    } else if (state.classify?.ok && state.classify.selectedIndex === null && !state.classify.needsChoice && state.finished === "stopped") {
+      message = d.notCase;
+    }
+    if (message) {
+      setDeclined(message);
+      show("declined");
     }
   }
 
-  function choose(option: { title: string; url: string | null }) {
-    if (!option.url || !request) return;
-    void start({ ...request, url: option.url });
-  }
+  const you = request
+    ? {
+        what: request.pasted
+          ? ui.bubble.pasted(words(request.pasted.text), request.pasted.images.length)
+          : displaySource(request.url ?? ""),
+        levels: ui.bubble.levels(request.currentLevel ? levelWord(request.currentLevel) : null, request.targetLevel ? levelWord(request.targetLevel) : null),
+      }
+    : { what: "", levels: "" };
 
   if (view === "landing") {
-    return <Landing onStart={start} onHow={() => show("how")} busy={running} problem={problem} />;
+    return <Landing onStart={(req) => void start(req)} onHow={() => show("how")} busy={running} problem={problem} />;
   }
+
+  const report = run?.report?.ok ? run.report : null;
+  const source = request?.pasted ? ui.report.pastedHost : run?.fetch?.ok ? displaySource(run.fetch.finalUrl) : displaySource(request?.url ?? "");
 
   return (
     <>
       <Header
         onBack={goBack}
-        ownerToggle={ownerAvailable && view === "report"}
-        ownerOn={ownerOn}
-        onToggleOwner={() => setOwnerOn((v) => !v)}
+        backLabel={view === "how" ? ui.header.back : ui.header.newReview}
+        lined={view === "report"}
+        right={view === "report" ? (
+          <>
+            {ownerAvailable && (
+              <button type="button" className="icon-btn owner-btn" aria-pressed={ownerOn} onClick={() => setOwnerOn((v) => !v)}>Owner</button>
+            )}
+            <button type="button" className="icon-btn" onClick={() => window.print()} aria-label={ui.header.print}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4.5 6V2.5h7V6M4.5 11.5h-2V6h11v5.5h-2" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><rect x="4.5" y="9.5" width="7" height="4.5" stroke="currentColor" strokeWidth="1.3" /></svg>
+              <span className="t">{ui.header.print}</span>
+            </button>
+          </>
+        ) : undefined}
       />
-      {view === "how" && <How />}
+      {view === "how" && <How onStart={goBack} />}
       {view === "running" && run && request && (
-        <Running url={request.url} startedAt={startedAt} run={run} running={running} onCancel={goBack} onChoose={choose} />
+        <Running
+          you={you}
+          run={run}
+          running={running}
+          startedAt={startedAt}
+          endedAt={endedAt}
+          onCancel={goBack}
+          onRetry={() => void start(request)}
+          onOpenReport={() => show("report")}
+        />
       )}
-      {view === "report" && run?.report?.ok && (
-        <Report run={run} reported={run.report} ownerOn={ownerOn} onRerun={() => request && void start(request)} onAnother={goBack} />
+      {view === "clarify" && run?.options && request && (
+        <Clarify you={you} options={run.options} onChoose={(url) => void start({ ...request, url, pasted: undefined })} onDirect={goBack} />
+      )}
+      {view === "declined" && declined && request && (
+        <Declined
+          you={you}
+          message={declined}
+          busy={running}
+          onSubmit={(pasted) => void start({ ...request, pasted })}
+          onAnother={goBack}
+        />
+      )}
+      {view === "report" && run && report && (
+        <Report run={run} reported={report} source={source} ownerOn={ownerOn} onRerun={() => request && void start(request)} onAnother={goBack} />
       )}
     </>
   );

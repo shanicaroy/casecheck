@@ -17,6 +17,8 @@ export const activity = {
     found: (links: number, images: number, embeds: number) =>
       `Found: ${links} link${links === 1 ? "" : "s"}, ${images} image${images === 1 ? "" : "s"}${embeds ? `, ${embeds} embedded video${embeds === 1 ? "" : "s"}/prototype${embeds === 1 ? "" : "s"}` : ""}`,
     following: (host: string) => `Following the link to the case study on ${host}`,
+    pasted: (words: number, images: number) =>
+      `Pasted text received: ${words.toLocaleString()} words${images ? `, ${images} screenshot${images === 1 ? "" : "s"}` : ""}`,
   },
   classify: {
     caseStudy: (title: string) => `Case study: ${title}`,

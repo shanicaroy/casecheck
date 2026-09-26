@@ -360,3 +360,51 @@ no error state; one line in the missing colour under the step, and the meta row'
 "Review another case study".
 
 **"Request a review with Shanica" is inert until a booking link is set** in `content/copy.ts`.
+
+## 2026-09-26 · UI revamp: running, report and supporting views, mobile ready
+
+Designed first on a canvas, then built to match it. The landing is unchanged, byte for byte.
+
+**The conversation carries past the landing.** The link the designer sent appears as their message,
+and Case Check answers underneath it. Running, clarify and declined are all turns in that thread,
+so the product keeps the feel of the composer instead of switching to a dashboard.
+
+**Colour means the agent is alive.** The brand gradient appears only while a review runs: a slowly
+turning edge around the progress card, a sweep on the active segment and step name, and the glow
+behind the mark. When the review finishes or stops, the card goes still and the report is
+monochrome. Motion is therefore information, not decoration.
+
+**Progress is a six-segment bar with no percentage.** A percentage would be invented; the segments
+follow the step events. Each step shows its own timer beside the logged median. The twelve rubric
+chips appear when the checks start, all checking together because they run as one call, outlined
+where the plan pressed hardest, and resolve to real verdicts when checks and then verification land.
+
+**Slow and stuck now look different.** The run route sends a content-free heartbeat every three
+seconds. A step past twice its usual time shows "Taking longer than usual. Still working." with the
+age of the last heartbeat. Thirty seconds without any line means the stream is gone: the card
+stops, and "Try again" starts clean. A failed step shows the same retry under the step itself.
+
+**Where a finished run lands is decided in one function, `settle()` in `app/page.tsx`.** Report
+(opened after 1.6 seconds, or at once from "Read the review"), clarify (several case studies),
+declined (too thin, login wall, dead link, timeout, not a web page, not a case study), otherwise
+the running view in its stopped state.
+
+**Declines offer the paste fallback (contract §5).** Every decline says why and offers pasted text,
+with optional screenshots. Hosts known to block readers (Behance) are caught before a run starts.
+Pasted text goes through the same six steps: `src/steps/pasted.ts` turns it into the fetch step's
+shape, verification searches the pasted text, the thin floor still applies, and a pasted run never
+follows a link. Screenshots are downscaled in the browser to 1400px JPEG, capped at eight, and
+held for the run only. Screenshots alone do not pass the floor; they add to text.
+
+**Status reads by shape as well as colour.** Present is a filled dot, weak is half filled, missing
+is an empty ring, not judged is a dash. The level read is a five-stop ladder with the gap to the
+target drawn in black, so it points forward rather than labelling the designer.
+
+**"See the reasoning" is closed by default.** The canvas showed it open to demonstrate it; the
+v0.3 decision is that the verdict is always visible and the reasoning is one expansion away.
+
+**"Was this the right call?" writes the run id and the answer to the server log** through
+`/api/feedback`, for the evaluation. No URL, text or findings.
+
+**Radius moved from 4px to 20–24px on cards** to match the composer, so the thread reads as one
+surface. Tokens live in the second `:root` block of `app/globals.css`.

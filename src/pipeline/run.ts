@@ -14,7 +14,8 @@
  *    classified in its place (one hop), and the log says so.
  */
 import { randomUUID } from "node:crypto";
-import { fetchPage, type FetchOk, type FetchFail } from "../steps/fetch";
+import { fetchPage, type FetchOk, type FetchFail, type FetchResult } from "../steps/fetch";
+import { fromPasted, type PastedInput } from "../steps/pasted";
 import { classify, type ClassifyOk, type ClassifyFail } from "../steps/classify";
 import { plan as planChecks, type PlanOk, type PlanFail } from "../steps/plan";
 import { runChecks, type ChecksOk, type ChecksFail } from "../steps/checks";
@@ -85,7 +86,10 @@ export type RunEvent =
   | { type: "run"; status: "declined"; declined: Declined; log: RunLog }
   | { type: "run"; status: "stopped" | "complete"; log: RunLog };
 
-export interface RunOptions extends LevelInputs {}
+export interface RunOptions extends LevelInputs {
+  /** The fallback intake: pasted text (and screenshots) instead of a link. */
+  pasted?: PastedInput;
+}
 
 export interface RunDeps {
   callModel?: CallModel;
@@ -113,15 +117,19 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
 
   // 1. Fetch
   yield { type: "step", step: "fetch", status: "running" };
-  let fetched = await fetchPage(url, { limits: lim });
+  let fetched: FetchResult = options.pasted ? fromPasted(options.pasted, lim.imageCap) : await fetchPage(url, { limits: lim });
   log.steps.push({ step: "fetch", durationMs: fetched.durationMs });
   if (!fetched.ok) {
     yield { type: "step", step: "fetch", status: "failed", error: fetched, durationMs: fetched.durationMs };
     yield finish("stopped");
     return;
   }
-  yield { type: "step", step: "fetch", status: "note", line: activity.fetch.captured(fetched.narrativeWordCount) };
-  yield { type: "step", step: "fetch", status: "note", line: activity.fetch.found(fetched.links.length, fetched.imageCandidates, fetched.embeds.length) };
+  if (options.pasted) {
+    yield { type: "step", step: "fetch", status: "note", line: activity.fetch.pasted(fetched.narrativeWordCount, fetched.images.length) };
+  } else {
+    yield { type: "step", step: "fetch", status: "note", line: activity.fetch.captured(fetched.narrativeWordCount) };
+    yield { type: "step", step: "fetch", status: "note", line: activity.fetch.found(fetched.links.length, fetched.imageCandidates, fetched.embeds.length) };
+  }
   yield { type: "step", step: "fetch", status: "done", result: publicFetch(fetched), durationMs: fetched.durationMs };
 
   // 2. Classify
@@ -139,6 +147,7 @@ export async function* runPipeline(url: string, options: RunOptions = {}, deps: 
 
   // Follow an index page to its only case study when that lives elsewhere (one hop).
   if (
+    !options.pasted &&
     classified.classification.page_kind === "portfolio_index" &&
     classified.selectedIndex !== null &&
     classified.classification.case_studies[classified.selectedIndex]?.url &&
