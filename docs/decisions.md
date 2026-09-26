@@ -420,3 +420,23 @@ captured. Images not captured in the budget are declared "not read" downstream, 
 beyond the cap. Worst-case fetch drops from ~100s to ~25s, typically under 10s. All three numbers
 are env-overridable in `config/limits.ts`. The running view already showed this correctly as slow,
 not stuck, via the heartbeat; this fixes the underlying speed.
+
+## 2026-09-26 · A blocked link should never strand the run on the running view
+
+**A reader-blocked or unreadable link now always lands on the declined + paste-fallback screen.**
+A Behance link could reach the running view and stop on the fetch step's raw wire reason
+("Server answered 403.") instead of the friendly "Behance blocks automated readers, paste the text
+instead" screen. Two gaps, both closed:
+
+- **Schemeless links bypassed the host guard.** A designer pastes `behance.net/gallery/…` without
+  `https://`. `hostOf` returned null for it, so the pre-run reader-block guard was skipped, and the
+  fetch step later rejected it or hit a 403. New `normalizeUrl` (`src/ui/format.ts`) gives a
+  schemeless link its `https://` scheme; `start()` normalizes the URL before the guard and before
+  the request, and `hostOf` normalizes internally too. The guard now catches a bare Behance link.
+- **`settle()` did not always route a failure to the declined view.** It now routes *every* fetch
+  failure to a declined message (unknown reasons fall back to "couldn't open it, paste instead"
+  rather than stranding the run), and when the failed host is a known reader-blocker it shows the
+  Behance-blocked copy whatever the wire reason (403, login redirect, challenge page all mean the
+  same to the designer). A route/stream error on a known reader-blocker routes there too.
+
+Locked in by `test/format.test.ts` (browser-independent). No rubric or scoring change.
