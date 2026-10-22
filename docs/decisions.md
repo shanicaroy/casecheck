@@ -420,3 +420,27 @@ captured. Images not captured in the budget are declared "not read" downstream, 
 beyond the cap. Worst-case fetch drops from ~100s to ~25s, typically under 10s. All three numbers
 are env-overridable in `config/limits.ts`. The running view already showed this correctly as slow,
 not stuck, via the heartbeat; this fixes the underlying speed.
+
+## 2026-10-22 · Mobile: nothing clips, it reads like an app
+
+**Made every view hold together on a phone.** The real break was horizontal:
+a long unbreakable string in a case study (an external link such as a full
+Behance gallery URL) has no break point, so it set the column's minimum width
+and pushed the whole report wider than the screen. Fix: the content columns
+(report, thread, how, option and route cards, notices, inventory and key/value
+rows) wrap long tokens with `overflow-wrap:anywhere`, while headings use the
+gentler `break-word`. Verified at 320, 360 and 390px across landing, how,
+running, clarify, declined and report: zero horizontal overflow.
+
+Alongside that, a mobile-polish pass so it reads like a native screen, not a
+shrunk desktop page:
+- Buttons wrap their label instead of forcing a nowrap line off-screen.
+- The twelve running-view chips show their whole label (wrapping to two lines)
+  rather than truncating to "Problem fram…".
+- A 380px breakpoint tightens the display type, drops the page gutter to 16px,
+  and stacks the chips to one column on the narrowest phones.
+- `viewport-fit=cover` plus `env(safe-area-inset-*)` keep the sticky top bar and
+  the page edges clear of the notch and home indicator. Insets are 0 on a normal
+  screen, so nothing moves there.
+
+No copy, rubric or scoring change; CSS and the viewport export only.
