@@ -30,7 +30,7 @@ export const copy = {
       photoAlt: "Photo of Shanica Roy",
       photoSlot: "Photo",
       /** Set to a path under public/ to show the real photo, for example "/shanica.jpg". */
-      photoSrc: null as string | null,
+      photoSrc: "/shanica.webp" as string | null,
       title: "This is how Shanica reviews a case study.",
       who: "Shanica Roy. UX lead, IRB-licensed researcher, 5,000+ designers mentored.",
       lede1:

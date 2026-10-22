@@ -341,6 +341,7 @@ details[open] > summary .chev{transform:rotate(180deg)}
 /* ---------- how it works ---------- */
 .how2{width:100%;max-width:1008px;margin:0 auto;padding:80px 24px 96px;display:flex;flex-direction:column}
 .how2 .photo2{width:120px;height:120px;border-radius:50%;background:var(--surface);border:1px dashed var(--ring);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink-3);overflow:hidden}
+.how2 .photo2:has(img){border-style:solid}
 .how2 .photo2 img{width:100%;height:100%;object-fit:cover}
 .how2 h1{font-size:44px;font-weight:500;line-height:1.15;letter-spacing:-0.025em;margin-top:28px;max-width:760px}
 .how2 .who{font-size:16px;color:var(--ink-2);margin-top:10px}
