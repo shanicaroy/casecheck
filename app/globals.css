@@ -370,6 +370,10 @@ details[open] > summary .chev{transform:rotate(180deg)}
 .close-card span{font-size:15px;color:var(--ink-2)}
 
 /* ---------- motion, print, small screens ---------- */
+/* app: long tokens (URLs, slugs, handles) must wrap instead of widening the
+   column — on a phone an unbreakable link is what pushes text off-screen. */
+.doc2,.thread,.how2,.option,.route,.notice,.live-inner,.stops-card,.verify-strip,.kv,.inv,.list2,.limits2,.cols,.pair{overflow-wrap:anywhere}
+.doc2 h1,.card h2,.card h3,.sec2>h3,.reads-head h3,.agent .say h1,.how2 h1,.how2 h2,.close-card b{overflow-wrap:break-word}
 @media (prefers-reduced-motion:reduce){
   .aurora span,.avatar,.avatar::before,.avatar svg,.reviewer-glow{animation:none}
   .hero > *{animation:none;opacity:1;transform:none}
@@ -472,3 +476,46 @@ details[open] > summary .chev{transform:rotate(180deg)}
 .chip{padding:0 10px}
 @media (max-width:640px){.submit-row .acts .b-link{align-self:center}}
 .b-link{white-space:nowrap}
+
+/* =====================================================================
+   app: mobile hardening. Make every view behave like a native screen on a
+   phone — nothing clips, nothing overflows, labels wrap, taps are large.
+   ===================================================================== */
+@media (max-width:640px){
+  /* Buttons wrap their label instead of forcing a nowrap line off-screen. */
+  .b-primary,.b-secondary,.pill-btn,.btn{white-space:normal;height:auto;min-height:48px;padding-top:11px;padding-bottom:11px;line-height:1.25;text-align:center}
+  .b-link{white-space:normal}
+  /* Chips show their whole label (wrapping) rather than truncating to "…". */
+  .chips{gap:7px}
+  .chip{height:auto;min-height:34px;padding:7px 11px;white-space:normal}
+  .chip .chip-t{overflow:visible;text-overflow:clip;white-space:normal;line-height:1.2}
+  /* The reviewing title and report headline sit tighter to the top on a phone. */
+  .agent .say h1{font-size:19px}
+  .doc2 h1{font-size:28px;letter-spacing:-0.02em}
+  /* Inventory + key/value rows read as stacked label-over-value blocks. */
+  .verify-strip{flex-direction:column;gap:6px;align-items:flex-start}
+  /* The level ladder keeps its five stops legible on the narrowest screens. */
+  .ladder .nm{font-size:11px;line-height:1.2}
+}
+@media (max-width:380px){
+  :root{--fs-display:clamp(27px,8vw,34px)}
+  .thread{padding-left:16px;padding-right:16px}
+  .report2{padding-left:16px;padding-right:16px}
+  .how2{padding-left:16px;padding-right:16px}
+  .hero{padding-left:18px;padding-right:18px}
+  .chips{grid-template-columns:1fr}
+  .doc2 h1{font-size:26px}
+  .agent .clock b{font-size:18px}
+  .ladder .tag{display:none}
+}
+
+/* app: opt into the full screen on notched phones, and keep the sticky bar and
+   page edges clear of the notch and home indicator. Insets are 0 elsewhere, so
+   nothing changes on a normal screen. */
+.topbar{padding-top:env(safe-area-inset-top);padding-left:max(32px,env(safe-area-inset-left));padding-right:max(32px,env(safe-area-inset-right));height:calc(64px + env(safe-area-inset-top))}
+@media (max-width:640px){
+  .topbar{padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));height:calc(56px + env(safe-area-inset-top))}
+  .thread,.report2,.how2{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  .hero{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  .hero .how{bottom:calc(20px + env(safe-area-inset-bottom))}
+}

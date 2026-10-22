@@ -1,10 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { copy } from "@/content/copy";
 
 export const metadata: Metadata = {
   title: copy.name,
   description: copy.landing.hero.title,
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Use the full screen on notched phones; CSS keeps content clear of the insets.
+  viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
