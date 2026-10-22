@@ -22,7 +22,7 @@ import { Declined, type DeclinedCopy } from "@/components/Declined";
 import { Report } from "@/components/Report";
 import { ui, READER_BLOCKING_HOSTS } from "@/content/ui";
 import { freshState, apply, type RunState, type StreamEvent } from "@/src/ui/runState";
-import { displaySource, hostOf, levelWord, words } from "@/src/ui/format";
+import { displaySource, hostOf, levelWord, normalizeUrl, words } from "@/src/ui/format";
 import type { PastedImage } from "@/src/steps/pasted";
 
 type View = "landing" | "how" | "running" | "clarify" | "declined" | "report";
@@ -32,6 +32,14 @@ interface Request extends StartRequest {
 }
 
 const OPEN_REPORT_AFTER_MS = 1600;
+
+/** The label of the reader-blocking host this link belongs to, or null. */
+function readerBlocker(url: string | null | undefined): string | null {
+  const host = url ? hostOf(url) : null;
+  if (!host) return null;
+  const hit = Object.entries(READER_BLOCKING_HOSTS).find(([h]) => host === h || host.endsWith(`.${h}`));
+  return hit ? hit[1] : null;
+}
 
 export default function Page() {
   const [view, setView] = useState<View>("landing");
@@ -96,20 +104,25 @@ export default function Page() {
     };
   }, [view, run, goBack]);
 
-  async function start(req: Request) {
+  async function start(reqIn: Request) {
     abortRef.current?.abort();
     setProblem(null);
+    // A pasted link is rarely a perfect URL ("behance.net/…" with no scheme is
+    // the common one). Give it an https:// so the guard below and the fetch step
+    // both see a real link, not something they reject.
+    const req: Request = reqIn.url ? { ...reqIn, url: normalizeUrl(reqIn.url) } : reqIn;
     setRequest(req);
     setDeclined(null);
 
     // A host known to block readers is caught before a doomed run starts.
-    const host = req.url ? hostOf(req.url) : null;
-    const blocker = host ? Object.entries(READER_BLOCKING_HOSTS).find(([h]) => host === h || host.endsWith(`.${h}`)) : undefined;
-    if (!req.pasted && blocker) {
-      setRun(null);
-      setDeclined(ui.declined.blocked(blocker[1]));
-      show("declined");
-      return;
+    if (!req.pasted && req.url) {
+      const blocker = readerBlocker(req.url);
+      if (blocker) {
+        setRun(null);
+        setDeclined(ui.declined.blocked(blocker));
+        show("declined");
+        return;
+      }
     }
 
     const controller = new AbortController();
@@ -156,11 +169,11 @@ export default function Page() {
         setEndedAt(Date.now());
       }
     }
-    if (!controller.signal.aborted) settle(state);
+    if (!controller.signal.aborted) settle(state, req.url);
   }
 
   /** Where a finished run lands. Anything not listed stays on the running view, which shows it stopped and offers a retry. */
-  function settle(state: RunState) {
+  function settle(state: RunState, requestedUrl?: string) {
     if (state.report?.ok) {
       openTimer.current = setTimeout(() => show("report"), OPEN_REPORT_AFTER_MS);
       return;
@@ -170,15 +183,29 @@ export default function Page() {
       return;
     }
     const d = ui.declined;
+    // If the link was a host known to block readers, say that plainly whatever
+    // the wire reason was: a 403, a login redirect and a challenge page all mean
+    // the same thing to the designer, and only the paste fallback will work.
+    const failedUrl = (state.fetch && !state.fetch.ok ? state.fetch.requestedUrl : null) ?? requestedUrl ?? null;
+    const blocker = readerBlocker(failedUrl);
     let message: DeclinedCopy | null = null;
     if (state.declined) message = d.thin(state.declined.narrativeWordCount, state.declined.floor);
     else if (state.fetch && !state.fetch.ok) {
       const f = state.fetch;
-      if (f.reason === "http_error" && (f.status === 401 || f.status === 403)) message = d.login;
+      if (blocker) message = d.blocked(blocker);
+      else if (f.reason === "http_error" && (f.status === 401 || f.status === 403)) message = d.login;
       else if (f.reason === "http_error" || f.reason === "unreachable") message = d.dead;
       else if (f.reason === "timeout") message = d.timeout;
       else if (f.reason === "not_html") message = d.notHtml;
       else if (f.reason === "invalid_url") message = d.invalid;
+      // browser_unavailable, unexpected, or any reason added later: never leave
+      // the run stuck on the running view. Offer the paste fallback.
+      else message = d.dead;
+    } else if (state.error && blocker) {
+      // The stream or the route itself failed before any step reported, and the
+      // link was a known reader-blocker: say so, and offer the paste fallback.
+      // Other transport errors stay on the running view, which offers a retry.
+      message = d.blocked(blocker);
     } else if (state.classify?.ok && state.classify.selectedIndex === null && !state.classify.needsChoice && state.finished === "stopped") {
       message = d.notCase;
     }

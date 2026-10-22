@@ -8,9 +8,22 @@ export function displaySource(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
+/**
+ * What a designer pastes is rarely a perfect URL: "behance.net/gallery/…" with
+ * no scheme is the common one. Give it an https:// so the rest of the app sees
+ * a real link — the host guard can match it, and the fetch step doesn't reject
+ * it as invalid before it ever tries. A link that already names its scheme is
+ * left untouched.
+ */
+export function normalizeUrl(input: string): string {
+  const t = input.trim();
+  if (!t) return t;
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(t) ? t : `https://${t}`;
+}
+
 export function hostOf(url: string): string | null {
   try {
-    return new URL(url).hostname.replace(/^www\./, "");
+    return new URL(normalizeUrl(url)).hostname.replace(/^www\./, "");
   } catch {
     return null;
   }
